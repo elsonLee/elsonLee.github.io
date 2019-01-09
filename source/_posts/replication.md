@@ -11,7 +11,7 @@ tags:
 几点理由：
 >1. 兼顾地理位置迥异的客户，减少他们的访问**延迟（latency）**
 >2. 机器互相备份，提高**可用性（availability）**
->3. 水平扩展（scale out）机器数目，提高**读吞吐率（read throughput）**（注：实现强一致性（strong consistency)时，并不能提高读吞吐率）
+>3. 水平扩展（scale out）机器数目，提高**读吞吐率（read throughput）**（注：实现强一致性（strong consistency)时，由于需要使用完全同步方案，写操作会影响读吞吐率的提高）
 
 面临的问题：
 基于**数据是变化**的这个前提，会面临同步、异步的选择、副本失效的处理等问题
@@ -27,7 +27,7 @@ tags:
 >2. follower接收到leader的log后应用（apply）到本地存储，应用顺序保证和leader的应用顺序一致（注：复制状态机）
 >3. client允许从任意leader或follower中读数据
 >
-（注：由于写操作
+（注：由于写操作只能路由到leader，读请求却能路由到任意副本，因此对于single-leader方案来说有很好的读扩展能力（read-scaling），能够在读多写少的场景下通过水平扩展获得极大的读吞吐量，但是follower越多，就越不能使用完全同步的方案实现强一致性）
 #### 写操作同步
 对于写操作，这里可选择**同步复制**、**异步复制**以及**半同步复制**（区别在于是否等待所有副本确认复制成功后向client返回结果）  
 **同步复制（synchronous）**(注：可使用2PC，但是完全同步复制几乎不可用）  
@@ -75,10 +75,12 @@ follower恢复后，查看自己失效前最后一条log，并以此向leader请
 - **违反monotonic reads**  
 多次读请求路由到的follower存在数据不一致的情况，可能出现后读的数据不新鲜的情况。
 解决方法可以**基于用户ID每次路由到同一个副本**
-- **违反consistent prefix reads**（注：常见于partition）  
+- **违反consistent prefix reads**（注：违反因果性）  
 用户A和用户B分别向两个partition写数据$w1$、$w2$，并且$w1$ happened-before $w2$，然而，用户C看到的partition 1和partition 2中的两个节点更新顺序和$w1$、$w2$的更新顺序不同，违反了因果性.
 ![](consistent_prefix_reads.PNG)
-解决方法可以是**具有因果关系的操作总是写入同一个partition**，或者利用happens-before关系给这些写操作指定一个全序关系（注：可以利用Lamport logical timestamp）
+类似的，在multi-leader方案中，用户A向leader 1写数据，leader 1和leader 2/3同步$w1$, $w2$，然而对于用户B，看到leader 3最新数据后写leader 3 $w3$，此时$w1$ happends before $w3$，但是leader 3在同步到leader 1/2时leader 1到leader 2的同步还没有完成，这时对于leader 2的2次写操作顺序颠倒了
+![](multi-leader-causality.PNG)
+解决方法可以是**具有因果关系的操作总是写入同一个partition**，或者利用happens-before关系给这些写操作指定一个全序关系（注：可以利用Lamport logical timestamp或者version vector）
 
 ### Multi-leader（acitve/active、master-master）
 应用于多数据中心（multi-datacenter）  
@@ -98,3 +100,13 @@ follower恢复后，查看自己失效前最后一条log，并以此向leader请
 	- 每个副本携带一个ID，使用higher replica ID wins方法
 	- 记录所有的值，按照字母顺序合并到一起
 	- 记录所有的信息，等待应用层处理冲突（可等待用户下次读的时候处理）
+	
+#### Multi-leader的拓扑结构
+- 环形结构（Circular topology）
+- 星形结构（Star topology）
+- 全连接结构（All-to-all topology）（常用）
+![](multi-leader-topologies.PNG)
+星型结构和全连接结构需要防止“环”，可以在写操作中记录完成复制的副本ID，检查ID即可确认是否复制过
+环形结构和星形结构的问题在于其中一个节点失效可能导致整个系统不能正常工作，
+
+
