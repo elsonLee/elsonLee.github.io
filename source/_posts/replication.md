@@ -77,7 +77,7 @@ follower恢复后，查看自己失效前最后一条log，并以此向leader请
 解决方法可以**基于用户ID每次路由到同一个副本**
 - **违反consistent prefix reads**（注：常见于partition）  
 用户A和用户B分别向两个partition写数据$w1$、$w2$，并且$w1$ happened-before $w2$，然而，用户C看到的partition 1和partition 2中的两个节点更新顺序和$w1$、$w2$的更新顺序不同，违反了因果性.
-![](consistent_prefix_reads.PNG)
+![](replication/consistent_prefix_reads.PNG)
 解决方法可以是**具有因果关系的操作总是写入同一个partition**，或者利用happens-before关系给这些写操作指定一个全序关系（注：可以利用Lamport logical timestamp）
 
 ### Multi-leader（acitve/active、master-master）
