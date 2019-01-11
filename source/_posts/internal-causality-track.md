@@ -1,5 +1,5 @@
 ---
-title: internal-causality-track
+title: Internal Causality的跟踪（tracking）
 date: 2019-01-11 11:17:22
 tags:
 ---
