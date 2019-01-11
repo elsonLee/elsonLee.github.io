@@ -1,5 +1,5 @@
 ---
-title: replication
+title: 复制（Replication）
 date: 2019-01-09 13:50:29
 tags:
 ---
