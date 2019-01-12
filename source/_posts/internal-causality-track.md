@@ -48,5 +48,4 @@ Causal histories方法的问题在于history集合随着时间的增长、事件
 [4] Carlos Baquero. 2016. Why Logical Clocks are Easy.
 [5] Martin Kleppmann. 2017. Designing Data-Intensive Applications.
 [6] Sean Cribbs. 2014. A Brief History of Time In Riak.
-[7] Reinhard Schwarz. 1994. Detecting Causal Relationships in Distributed Computations:  
-In Search of the Holy Grail
+[7] Reinhard Schwarz. 1994. Detecting Causal Relationships in Distributed Computations:In Search of the Holy Grail
