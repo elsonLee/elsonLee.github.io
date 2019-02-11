@@ -1,4 +1,4 @@
----
+﻿---
 title: Internal Causality的跟踪（tracking）
 date: 2019-01-11 11:17:22
 tags:
@@ -36,7 +36,7 @@ Causal histories方法的问题在于history集合随着时间的增长、事件
 此外，基于前提：
 >即便进程数目很大，互相通过消息传递进程数量是较小的
 
-所以在传递消息时，携带的timestamp（向量）是可以压缩的（不记录值为0的项），用{{i, num of i}}代替，可以进一步减少网络带宽需求（注：这样压缩是没有信息损失的，不会出现无法判断两个事件causality关系的情况）。
+所以在传递消息时，携带的timestamp（向量）是可以压缩的（不记录值为0的项），用{i, num of i}代替，可以进一步减少网络带宽需求（注：这样压缩是没有信息损失的，不会出现无法判断两个事件causality关系的情况）。
 
 ##  总结
 要解决分布式系统中由Internal Causality不一致导致的问题，就需要准确跟踪系统中的事件关系。使用UUID、物理时间作为事件的timestamp实现简单，但是无法准确描述事件之间的causality关系（物理时间的高精度同步也有现实的困难）。从Lamport Timestamp出发，利用了Lamport Clock对于事件causality关系的记录原理，又对Lamport Clock无法直接区别事件causality关系的特点进行改进，通过记录每个事件的事件图，得到了Causality histories方案，能准确判断任意事件之间的causality关系，同时，进一步优化空间复杂度、减小网络带宽需求，对事件图和timestamp进行压缩，得到Vector clock方案。
