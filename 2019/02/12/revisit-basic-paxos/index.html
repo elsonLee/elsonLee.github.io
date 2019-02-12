@@ -79,17 +79,17 @@
 
 
 
-<meta name="description" content="Revisit Basic Paxos的唯一性需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值） 只有当某个值被选中后，才能被其他进程学习到  活性条件（liveness）：  保证最终能选中一个值  通信模型条件：  异步（允许延迟、消息丢失）、非拜占庭模型  Quorum条件：">
+<meta name="description" content="Revisit Basic Paxos��Ψһ����Ҫ�����������ȫ��������safety����  ֻ��ѡ�����飨propose����ֵ ֻ��һ��ֵ�ᱻѡ�У�������ĳ��ʱ��ĳ��ֵ��ѡ�к���һ��ʱ����ѡ�������ⲻͬ��ֵ�� ֻ�е�ĳ��ֵ��ѡ�к󣬲��ܱ���������ѧϰ��  ����������liveness����">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Revisit Basic Paxos的唯一性">
+<meta property="og:title" content="Revisit Basic Paxos��Ψһ��">
 <meta property="og:url" content="http://yoursite.com/2019/02/12/revisit-basic-paxos/index.html">
 <meta property="og:site_name" content="Lexun&#39;s Notes">
-<meta property="og:description" content="Revisit Basic Paxos的唯一性需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值） 只有当某个值被选中后，才能被其他进程学习到  活性条件（liveness）：  保证最终能选中一个值  通信模型条件：  异步（允许延迟、消息丢失）、非拜占庭模型  Quorum条件：">
+<meta property="og:description" content="Revisit Basic Paxos��Ψһ����Ҫ�����������ȫ��������safety����  ֻ��ѡ�����飨propose����ֵ ֻ��һ��ֵ�ᱻѡ�У�������ĳ��ʱ��ĳ��ֵ��ѡ�к���һ��ʱ����ѡ�������ⲻͬ��ֵ�� ֻ�е�ĳ��ֵ��ѡ�к󣬲��ܱ���������ѧϰ��  ����������liveness����">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-12T03:55:31.956Z">
+<meta property="og:updated_time" content="2019-02-12T04:07:44.037Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Revisit Basic Paxos的唯一性">
-<meta name="twitter:description" content="Revisit Basic Paxos的唯一性需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值） 只有当某个值被选中后，才能被其他进程学习到  活性条件（liveness）：  保证最终能选中一个值  通信模型条件：  异步（允许延迟、消息丢失）、非拜占庭模型  Quorum条件：">
+<meta name="twitter:title" content="Revisit Basic Paxos��Ψһ��">
+<meta name="twitter:description" content="Revisit Basic Paxos��Ψһ����Ҫ�����������ȫ��������safety����  ֻ��ѡ�����飨propose����ֵ ֻ��һ��ֵ�ᱻѡ�У�������ĳ��ʱ��ĳ��ֵ��ѡ�к���һ��ʱ����ѡ�������ⲻͬ��ֵ�� ֻ�е�ĳ��ֵ��ѡ�к󣬲��ܱ���������ѧϰ��  ����������liveness����">
 
 
 
@@ -125,7 +125,7 @@
 
 
 
-  <title>Revisit Basic Paxos的唯一性 | Lexun's Notes</title>
+  <title>Revisit Basic Paxos��Ψһ�� | Lexun's Notes</title>
   
 
 
@@ -249,7 +249,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">Revisit Basic Paxos的唯一性</h1>
+          <h1 class="post-title" itemprop="name headline">Revisit Basic Paxos��Ψһ��</h1>
         
 
         <div class="post-meta">
@@ -299,57 +299,57 @@
       
 
       
-        <h1 id="Revisit-Basic-Paxos的唯一性"><a href="#Revisit-Basic-Paxos的唯一性" class="headerlink" title="Revisit Basic Paxos的唯一性"></a>Revisit Basic Paxos的唯一性</h1><h2 id="需要满足的条件"><a href="#需要满足的条件" class="headerlink" title="需要满足的条件"></a>需要满足的条件</h2><p>安全性条件（safety）：</p>
+        <h1 id="Revisit-Basic-Paxos��Ψһ��"><a href="#Revisit-Basic-Paxos��Ψһ��" class="headerlink" title="Revisit Basic Paxos��Ψһ��"></a>Revisit Basic Paxos��Ψһ��</h1><h2 id="��Ҫ���������"><a href="#��Ҫ���������" class="headerlink" title="��Ҫ���������"></a>��Ҫ���������</h2><p>��ȫ��������safety����</p>
 <ul>
-<li>只能选择被提议（propose）的值</li>
-<li>只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值）</li>
-<li>只有当某个值被选中后，才能被其他进程学习到</li>
+<li>ֻ��ѡ�����飨propose����ֵ</li>
+<li>ֻ��һ��ֵ�ᱻѡ�У�������ĳ��ʱ��ĳ��ֵ��ѡ�к���һ��ʱ����ѡ�������ⲻͬ��ֵ��</li>
+<li>ֻ�е�ĳ��ֵ��ѡ�к󣬲��ܱ���������ѧϰ��</li>
 </ul>
-<p>活性条件（liveness）：</p>
+<p>����������liveness����</p>
 <ul>
-<li>保证最终能选中一个值</li>
+<li>��֤������ѡ��һ��ֵ</li>
 </ul>
-<p>通信模型条件：</p>
+<p>ͨ��ģ��������</p>
 <ul>
-<li>异步（允许延迟、消息丢失）、非拜占庭模型</li>
+<li>�첽�������ӳ١���Ϣ��ʧ�����ǰ�ռͥģ��</li>
 </ul>
-<p>Quorum条件：</p>
+<p>Quorum������</p>
 <ul>
-<li>被大多数接收者所接收的值被视为选中</li>
+<li>������������������յ�ֵ����Ϊѡ��</li>
 </ul>
-<h2 id="如何保证满足唯一性"><a href="#如何保证满足唯一性" class="headerlink" title="如何保证满足唯一性"></a>如何保证满足唯一性</h2><p><strong>[R1] 每个接收者必须接受收到的第一个提议</strong>（没理由拒绝）</p>
-<p>假设提议{m, v1}被选中，之后提议{n, v2}被选中，要满足唯一性，必须保证v2 = v1。根据Quorum条件，一定存在某个大多数集合C1接受了提议m，同理一定存在某个大多数集合C2接受了提议n，C1和C2的交集不可能为空，即至少有一个接收者既接受了提议m，也接受了提议n。由于异步环境下提议的选中顺序取决于哪个提议先满足了Quorum原则，而具体某个接收者接受提议m和n的顺序是不一定的，所以加一个限制:<strong>[R2] 接收者如果已经接受过提议，之后只能接受ID更大的提议</strong>。在这个限制下，至少有一个接收者先接受了提议m，后接受了提议n，且n ＞ m（否则提议m不可能达成Quorum）。</p>
-<p>现在要保证v2 = v1，提议n在被提议前必须学习到提议m的值，在异步环境下需要满足2个条件:</p>
+<h2 id="��α�֤����Ψһ��"><a href="#��α�֤����Ψһ��" class="headerlink" title="��α�֤����Ψһ��"></a>��α�֤����Ψһ��</h2><p><strong>[R1] ÿ�������߱�������յ��ĵ�һ������</strong>��û���ɾܾ���</p>
+<p>��������{m, v1}��ѡ�У�֮������{n, v2}��ѡ�У�Ҫ����Ψһ�ԣ����뱣֤v2 = v1������Quorum������һ������ĳ�����������C1����������m��ͬ��һ������ĳ�����������C2����������n��C1��C2�Ľ���������Ϊ�գ���������һ�������߼Ƚ���������m��Ҳ����������n�������첽�����������ѡ��˳��ȡ�����ĸ�������������Quorumԭ�򣬶�����ĳ�������߽�������m��n��˳���ǲ�һ���ģ����Լ�һ������:<strong>[R2] ����������Ѿ����ܹ����飬֮��ֻ�ܽ���ID���������</strong>������������£�������һ���������Ƚ���������m�������������n����n �� m����������m�����ܴ��Quorum����</p>
+<p>����Ҫ��֤v2 = v1������n�ڱ�����ǰ����ѧϰ������m��ֵ�����첽��������Ҫ����2������:</p>
 <blockquote>
 <ol>
-<li>接受过提议m的接收者，手上的值v1不能被覆盖掉(可以接受ID更大的提议，但值不能变)</li>
-<li>值v1一定是可以被唯一学习到的</li>
+<li>���ܹ�����m�Ľ����ߣ����ϵ�ֵv1���ܱ����ǵ�(���Խ���ID��������飬��ֵ���ܱ�)</li>
+<li>ֵv1һ���ǿ��Ա�Ψһѧϰ����</li>
 </ol>
 </blockquote>
-<p>先看条件1，假设条件2成立，那么在提议{m, v1}选中后，任意提议者提议前学习（通过预提议）到的值一定是v1，只要<strong>[R3] 让提议者提议时携带学习到的值v1即可</strong>。但是，也存在在提议m选中前提议者先学习到值v2，之后提议m才选中的情况，v2和v1可能不同，这种情况直接禁止掉: <strong>[R4] 学习的过程也让预提议接受者保证拒绝接受ID ＜ n的提议的承诺，并且提议者只有得到大多数接受者的回复才能发起新的提议</strong>。这样，只要提议n发起，就意味着存在一个多数人集合答应拒绝接受ID＜n的提议，提议m只能在预提议n完成前选中，否则是无法达成Quorum的（意味着只要提议m被选中，任何接收了提议m的接收者接受ID更大的预提议一定happens after接受提议m）。因此提议n的值一定是在提议m完成后学习到的，同样，只要条件2满足，条件1就能满足。</p>
-<p>再看条件2，学习的过程: <strong>[R5] 提议前给某个大多数集合发送预提议，让对方返回“选中”的值</strong>。但是这个“选中”的值，对每个人而言是不知道的，是个全局概念，根据[R1]，每个接收者可以记录已<strong>接受到的ID最大的值</strong>。那么提议者收到来自某个大多数集合中所有接受到的ID最大的值后(没接受过提议就返回空)，怎么从这堆返回值中找出v1？因为只有从中选ID最大/最小的值，才算是“可被学习到的”，那么从中选ID最大的值是否一定等于v1？</p>
-<p>提议{m, v1}被选中，必定存在大多数集合C1接受提议m，提议n（n &gt; m）被发起，根据R4，必定存在大多数集合C2接受了预提议n，C1和C2必有交集，且交集中的接收者事件顺序一定满足：<strong>提议m被选中</strong> happens before <strong>预提议n被接受</strong>（否则提议m达不到Quorum），所以预提议n学习到的值一定是m..n-1范围内的某个提议值，如果n = m+1，那么提议n的值一定是v1。另外，对任意被发起的提议m和n（n &gt; m），一定满足：<strong>预提议m</strong> happens before <strong>预提议n</strong>（否则预提议m达不到Quorum不会被发起）。根据归纳可得：预提议n学习到的值一定是v1，条件2满足。</p>
-<h2 id="Paxos流程"><a href="#Paxos流程" class="headerlink" title="Paxos流程"></a>Paxos流程</h2><p>将R1至R5整理，得到Paxos流程：<br>Phase 1.</p>
+<p>�ȿ�����1����������2��������ô������{m, v1}ѡ�к���������������ǰѧϰ��ͨ��Ԥ���飩����ֵһ����v1��ֻҪ<strong>[R3] ������������ʱЯ��ѧϰ����ֵv1����</strong>�����ǣ�Ҳ����������mѡ��ǰ��������ѧϰ��ֵv2��֮������m��ѡ�е������v2��v1���ܲ�ͬ���������ֱ�ӽ�ֹ��: <strong>[R4] ѧϰ�Ĺ���Ҳ��Ԥ��������߱�֤�ܾ�����ID �� n������ĳ�ŵ������������ֻ�еõ�����������ߵĻظ����ܷ����µ�����</strong>��������ֻҪ����n���𣬾���ζ�Ŵ���һ�������˼��ϴ�Ӧ�ܾ�����ID��n�����飬����mֻ����Ԥ����n���ǰѡ�У��������޷����Quorum�ģ���ζ��ֻҪ����m��ѡ�У��κν���������m�Ľ����߽���ID�����Ԥ����һ��happens after��������m�����������n��ֵһ����������m��ɺ�ѧϰ���ģ�ͬ����ֻҪ����2���㣬����1�������㡣</p>
+<p>�ٿ�����2��ѧϰ�Ĺ���: <strong>[R5] ����ǰ��ĳ����������Ϸ���Ԥ���飬�öԷ����ء�ѡ�С���ֵ</strong>�����������ѡ�С���ֵ����ÿ�������߶����ǲ�֪���ģ��Ǹ�ȫ�ָ������[R1]��ÿ�������߿��Լ�¼��<strong>���ܵ���ID����ֵ</strong>����ô�������յ�����ĳ����������������н��ܵ���ID����ֵ��(û���ܹ�����ͷ��ؿ�)����ô����ѷ���ֵ���ҳ�v1����Ϊֻ�д���ѡID���/��С��ֵ�������ǡ��ɱ�ѧϰ���ġ�����ô����ѡID����ֵ�Ƿ�һ������v1��</p>
+<p>����{m, v1}��ѡ�У��ض����ڴ��������C1��������m������n��n &gt; m�������𣬸���R4���ض����ڴ��������C2������Ԥ����n��C1��C2���н������ҽ����еĽ������¼�˳��һ�����㣺<strong>����m��ѡ��</strong> happens before <strong>Ԥ����n������</strong>����������m�ﲻ��Quorum��������Ԥ����nѧϰ����ֵһ����m..n-1��Χ�ڵ�ĳ������ֵ�����n = m+1����ô����n��ֵһ����v1�����⣬�����ⱻ���������m��n��n &gt; m����һ�����㣺<strong>Ԥ����m</strong> happens before <strong>Ԥ����n</strong>������Ԥ����m�ﲻ��Quorum���ᱻ���𣩡����ݹ��ɿɵã�Ԥ����nѧϰ����ֵһ����v1������2���㡣</p>
+<h2 id="Paxos����"><a href="#Paxos����" class="headerlink" title="Paxos����"></a>Paxos����</h2><p>��R1��R5�����õ�Paxos���̣�<br>Phase 1.</p>
 <blockquote>
-<p>(a) 提议者发送预提议{n}给某个大多数接收者集合 [R5]<br>(b) 接收者记录接受过的最大预提议ID，收到更大ID的预提议后，回复保证不再接受ID &lt; n的提议，并携带接受过的最大ID的提议值 [R2, R4, R5]</p>
+<p>(a) �����߷���Ԥ����{n}��ĳ������������߼��� [R5]<br>(b) �����߼�¼���ܹ������Ԥ����ID���յ�����ID��Ԥ����󣬻ظ���֤���ٽ���ID &lt; n�����飬��Я�����ܹ������ID������ֵ [R2, R4, R5]</p>
 </blockquote>
 <p>Phase 2.</p>
 <blockquote>
-<p>(a) 如果提议者收到来自大多数接收者的预提议回复，那么他将正式向那些接收者发起提议{n, v}，v是所有回复中ID最大的提议值，如果没有值，则v是任意值 [R3, R4]<br>(b) 如果接收者收到提议n，只要之前没接受过ID &gt; n的预提议，就接受提议n [R1, R2, R4]</p>
+<p>(a) ����������յ����Դ���������ߵ�Ԥ����ظ�����ô������ʽ����Щ�����߷�������{n, v}��v�����лظ���ID��������ֵ�����û��ֵ����v������ֵ [R3, R4]<br>(b) ����������յ�����n��ֻҪ֮ǰû���ܹ�ID &gt; n��Ԥ���飬�ͽ�������n [R1, R2, R4]</p>
 </blockquote>
-<h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>R4是整个算法的关键，建立了以下2个关系：<br>对于任意提议m和提议n（m &lt; n），一旦两个提议都发起，就必定满足：</p>
+<h2 id="�ܽ�"><a href="#�ܽ�" class="headerlink" title="�ܽ�"></a>�ܽ�</h2><p>R4�������㷨�Ĺؼ�������������2����ϵ��<br>������������m������n��m &lt; n����һ���������鶼���𣬾ͱض����㣺</p>
 <blockquote>
 <ol>
-<li>对任意接受预提议m和n的接收者，预提议m happens before 预提议n</li>
+<li>���������Ԥ����m��n�Ľ����ߣ�Ԥ����m happens before Ԥ����n</li>
 </ol>
 </blockquote>
-<p>如果提议m被选中，那么关系将收窄成：</p>
+<p>�������m��ѡ�У���ô��ϵ����խ�ɣ�</p>
 <blockquote>
 <ol start="2">
-<li>对任意接受提议m和预提议n的接收者，提议m happens before 预提议n</li>
+<li>�������������m��Ԥ����n�Ľ����ߣ�����m happens before Ԥ����n</li>
 </ol>
 </blockquote>
-<p> 关系1和2加上Quorum条件，可以确定，如果提议{m, v}被选中，那么预提议n学习到的值一定是v（提议n的值是v），这是确保唯一性的根本原因。</p>
+<p> ��ϵ1��2����Quorum����������ȷ�����������{m, v}��ѡ�У���ôԤ����nѧϰ����ֵһ����v������n��ֵ��v��������ȷ��Ψһ�Եĸ���ԭ��</p>
 
       
     </div>
@@ -496,7 +496,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Revisit-Basic-Paxos的唯一性"><span class="nav-number">1.</span> <span class="nav-text">Revisit Basic Paxos的唯一性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#需要满足的条件"><span class="nav-number">1.1.</span> <span class="nav-text">需要满足的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何保证满足唯一性"><span class="nav-number">1.2.</span> <span class="nav-text">如何保证满足唯一性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos流程"><span class="nav-number">1.3.</span> <span class="nav-text">Paxos流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">1.4.</span> <span class="nav-text">总结</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Revisit-Basic-Paxos��Ψһ��"><span class="nav-number">1.</span> <span class="nav-text">Revisit Basic Paxos��Ψһ��</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#��Ҫ���������"><span class="nav-number">1.1.</span> <span class="nav-text">��Ҫ���������</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#��α�֤����Ψһ��"><span class="nav-number">1.2.</span> <span class="nav-text">��α�֤����Ψһ��</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos����"><span class="nav-number">1.3.</span> <span class="nav-text">Paxos����</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#�ܽ�"><span class="nav-number">1.4.</span> <span class="nav-text">�ܽ�</span></a></li></ol></li></ol></div>
             
 
           </div>
