@@ -5,7 +5,7 @@ tags:
 ---
 # Basic Paxos的唯一性保证
 
-通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。
+通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。
 
 ##  Paxos需要满足的条件
 安全性条件（safety）：
