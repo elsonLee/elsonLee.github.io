@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-13T10:20:54.559Z">
+<meta property="og:updated_time" content="2019-02-13T10:28:21.376Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Basic Paxos的唯一性保证">
 <meta name="twitter:description" content="通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又">
@@ -329,7 +329,7 @@
 </blockquote>
 <p>先看条件1，假设条件2成立，那么在提议{m, v1}选中后，任意提议者提议前学习（通过预提议）到的值一定是v1，只要<strong>[R3] 让提议者提议时携带学习到的值v1即可</strong>。但是，也存在在提议m选中前提议者先学习到值v2，之后提议m才选中的情况，v2和v1可能不同，这种情况直接禁止掉: <strong>[R4] 学习的过程也让预提议接受者保证拒绝接受ID ＜ n的提议的承诺，并且提议者只有得到大多数接受者的回复才能发起新的提议</strong>。这样，只要提议n发起，就意味着存在一个多数人集合答应拒绝接受ID＜n的提议，提议m只能在预提议n完成前选中，否则是无法达成Quorum的（意味着只要提议m被选中，任何接收了提议m的接收者接受ID更大的预提议一定happens after接受提议m）。因此提议n的值一定是在提议m完成后学习到的，同样，只要条件2满足，条件1就能满足。</p>
 <p>再看条件2，学习的过程: <strong>[R5] 提议前给某个大多数集合发送预提议，让对方返回“选中”的值</strong>。但是这个“选中”的值，对每个接受者而言是不知道的，是个全局概念，根据[R1]，每个接收者可以记录已<strong>接受到的ID最大的值</strong>。那么提议者收到来自某个大多数集合中所有接受到的ID最大的值后(没接受过提议就返回空)，怎么从这堆返回值中找出v1？因为只有从中选ID最大/最小的值，才算是“可被学习到的”，那么从中选ID最大的值是否一定等于v1？</p>
-<p>提议{m, v1}被选中，必定存在大多数集合C1接受提议m，提议n（n &gt; m）被发起，根据R4，必定存在大多数集合C2接受了预提议n，C1和C2必有交集，且交集中的接收者事件顺序一定满足：<strong>{提议m被选中}$\rightarrow${预提议n被接受}</strong>（否则提议m达不到Quorum），所以预提议n学习到的值一定是m..n-1范围内的某个提议值，如果n = m+1，那么提议n的值一定是v1。另外，对任意被发起的提议m和n（n &gt; m），一定满足：<strong>{预提议m}$\rightarrow${预提议n}</strong>（否则预提议m达不到Quorum不会被发起）。根据归纳可得：预提议n学习到的值一定是v1，条件2满足。</p>
+<p>提议{m, v1}被选中，必定存在大多数集合C1接受提议m，提议n（n &gt; m）被发起，根据R4，必定存在大多数集合C2接受了预提议n，C1和C2必有交集，且交集中的接收者事件顺序一定满足：<strong>{提议m被接受}$\rightarrow${预提议n被接受}</strong>（否则提议m达不到Quorum），所以预提议n学习到的值一定是m..n-1范围内的某个提议值，如果n = m+1，那么提议n的值一定是v1。另外，对任意被发起的提议m和n（n &gt; m），一定满足：<strong>{预提议m被接受}$\rightarrow${预提议n被接受}</strong>（否则预提议m达不到Quorum不会被发起）。根据归纳可得：预提议n学习到的值一定是v1，条件2满足。</p>
 <h2 id="Paxos流程"><a href="#Paxos流程" class="headerlink" title="Paxos流程"></a>Paxos流程</h2><p>将R1至R5整理，得到Paxos流程：<br>Phase 1.</p>
 <blockquote>
 <p>(a) 提议者发送预提议{n}给某个大多数接收者集合 [R5]<br>(b) 接收者记录接受过的最大预提议ID，收到更大ID的预提议后，回复保证不再接受ID &lt; n的提议，并携带接受过的最大ID的提议值 [R2, R4, R5]</p>
@@ -341,13 +341,13 @@
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>R4是整个算法的关键，建立了以下2个关系：<br>对于任意提议m和提议n（m &lt; n），一旦两个提议都发起，就必定满足：</p>
 <blockquote>
 <ol>
-<li>对任意接受预提议m和n的接收者，{预提议m}$\rightarrow${预提议n}</li>
+<li>对任意接受预提议m和n的接收者，{预提议m被接受}$\rightarrow${预提议n被接受}</li>
 </ol>
 </blockquote>
 <p>如果提议m被选中，那么关系将收窄成：</p>
 <blockquote>
 <ol start="2">
-<li>对任意接受提议m和预提议n的接收者，{提议m}$\rightarrow${预提议n}</li>
+<li>对任意接受提议m和预提议n的接收者，{提议m被接受}$\rightarrow${预提议n被接受}</li>
 </ol>
 </blockquote>
 <p> 关系1和2加上Quorum条件，可以确定（见上面条件2的证明），如果提议{m, v}被选中，那么预提议n学习到的值一定是v（提议n的值是v），这是确保唯一性的根本原因。</p>
