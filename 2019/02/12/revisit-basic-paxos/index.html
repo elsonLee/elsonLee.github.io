@@ -79,17 +79,17 @@
 
 
 
-<meta name="description" content="Revisit Basic Paxos的唯一性需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值） 只有当某个值被选中后，才能被其他进程学习到  活性条件（liveness）：  保证最终能选中一个值  通信模型条件：  异步（允许延迟、消息丢失）、非拜占庭模型  Quorum条件：">
+<meta name="description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个">
 <meta property="og:type" content="article">
-<meta property="og:title" content="Revisit Basic Paxos的唯一性">
+<meta property="og:title" content="Basic Paxos的唯一性保证">
 <meta property="og:url" content="http://yoursite.com/2019/02/12/revisit-basic-paxos/index.html">
 <meta property="og:site_name" content="Lexun&#39;s Notes">
-<meta property="og:description" content="Revisit Basic Paxos的唯一性需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值） 只有当某个值被选中后，才能被其他进程学习到  活性条件（liveness）：  保证最终能选中一个值  通信模型条件：  异步（允许延迟、消息丢失）、非拜占庭模型  Quorum条件：">
+<meta property="og:description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-12T04:09:29.001Z">
+<meta property="og:updated_time" content="2019-02-13T07:52:34.611Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Revisit Basic Paxos的唯一性">
-<meta name="twitter:description" content="Revisit Basic Paxos的唯一性需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值） 只有当某个值被选中后，才能被其他进程学习到  活性条件（liveness）：  保证最终能选中一个值  通信模型条件：  异步（允许延迟、消息丢失）、非拜占庭模型  Quorum条件：">
+<meta name="twitter:title" content="Basic Paxos的唯一性保证">
+<meta name="twitter:description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个">
 
 
 
@@ -125,7 +125,7 @@
 
 
 
-  <title>Revisit Basic Paxos的唯一性 | Lexun's Notes</title>
+  <title>Basic Paxos的唯一性保证 | Lexun's Notes</title>
   
 
 
@@ -249,7 +249,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">Revisit Basic Paxos的唯一性</h1>
+          <h1 class="post-title" itemprop="name headline">Basic Paxos的唯一性保证</h1>
         
 
         <div class="post-meta">
@@ -299,7 +299,8 @@
       
 
       
-        <h1 id="Revisit-Basic-Paxos的唯一性"><a href="#Revisit-Basic-Paxos的唯一性" class="headerlink" title="Revisit Basic Paxos的唯一性"></a>Revisit Basic Paxos的唯一性</h1><h2 id="需要满足的条件"><a href="#需要满足的条件" class="headerlink" title="需要满足的条件"></a>需要满足的条件</h2><p>安全性条件（safety）：</p>
+        <h1 id="Basic-Paxos的唯一性保证"><a href="#Basic-Paxos的唯一性保证" class="headerlink" title="Basic Paxos的唯一性保证"></a>Basic Paxos的唯一性保证</h1><p>通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。</p>
+<h2 id="Paxos需要满足的条件"><a href="#Paxos需要满足的条件" class="headerlink" title="Paxos需要满足的条件"></a>Paxos需要满足的条件</h2><p>安全性条件（safety）：</p>
 <ul>
 <li>只能选择被提议（propose）的值</li>
 <li>只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值）</li>
@@ -317,7 +318,7 @@
 <ul>
 <li>被大多数接收者所接收的值被视为选中</li>
 </ul>
-<h2 id="如何保证满足唯一性"><a href="#如何保证满足唯一性" class="headerlink" title="如何保证满足唯一性"></a>如何保证满足唯一性</h2><p><strong>[R1] 每个接收者必须接受收到的第一个提议</strong>（没理由拒绝）</p>
+<h2 id="如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）"><a href="#如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）" class="headerlink" title="如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）"></a>如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）</h2><p><strong>[R1] 每个接收者必须接受收到的第一个提议</strong>（没理由拒绝）</p>
 <p>假设提议{m, v1}被选中，之后提议{n, v2}被选中，要满足唯一性，必须保证v2 = v1。根据Quorum条件，一定存在某个大多数集合C1接受了提议m，同理一定存在某个大多数集合C2接受了提议n，C1和C2的交集不可能为空，即至少有一个接收者既接受了提议m，也接受了提议n。由于异步环境下提议的选中顺序取决于哪个提议先满足了Quorum原则，而具体某个接收者接受提议m和n的顺序是不一定的，所以加一个限制:<strong>[R2] 接收者如果已经接受过提议，之后只能接受ID更大的提议</strong>。在这个限制下，至少有一个接收者先接受了提议m，后接受了提议n，且n ＞ m（否则提议m不可能达成Quorum）。</p>
 <p>现在要保证v2 = v1，提议n在被提议前必须学习到提议m的值，在异步环境下需要满足2个条件:</p>
 <blockquote>
@@ -349,7 +350,9 @@
 <li>对任意接受提议m和预提议n的接收者，提议m happens before 预提议n</li>
 </ol>
 </blockquote>
-<p> 关系1和2加上Quorum条件，可以确定，如果提议{m, v}被选中，那么预提议n学习到的值一定是v（提议n的值是v），这是确保唯一性的根本原因。</p>
+<p> 关系1和2加上Quorum条件，可以确定（见上面条件2的证明），如果提议{m, v}被选中，那么预提议n学习到的值一定是v（提议n的值是v），这是确保唯一性的根本原因。</p>
+<h2 id="其它说明"><a href="#其它说明" class="headerlink" title="其它说明"></a>其它说明</h2><p>在某个提议已经被选中的前提下，之后的预提议必定能学习到被选中的值。然而，存在多个提议（不同ID）被不同的少数接受者接受的情况，这时，预提议会学习到<strong>某大多数集合中ID最大的提议值</strong>，即通过预提议学习到非空值，提议者无法判断之前是否达成共识，这个可能会在某些场景下引入新的问题。</p>
+<p>参考资料：<br>[1] Lamport, L. Paxos made simple. ACM SIGACT News 32, 4 (Dec. 2001), 18-25</p>
 
       
     </div>
@@ -496,7 +499,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Revisit-Basic-Paxos的唯一性"><span class="nav-number">1.</span> <span class="nav-text">Revisit Basic Paxos的唯一性</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#需要满足的条件"><span class="nav-number">1.1.</span> <span class="nav-text">需要满足的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何保证满足唯一性"><span class="nav-number">1.2.</span> <span class="nav-text">如何保证满足唯一性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos流程"><span class="nav-number">1.3.</span> <span class="nav-text">Paxos流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">1.4.</span> <span class="nav-text">总结</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#Basic-Paxos的唯一性保证"><span class="nav-number">1.</span> <span class="nav-text">Basic Paxos的唯一性保证</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos需要满足的条件"><span class="nav-number">1.1.</span> <span class="nav-text">Paxos需要满足的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）"><span class="nav-number">1.2.</span> <span class="nav-text">如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos流程"><span class="nav-number">1.3.</span> <span class="nav-text">Paxos流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">1.4.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其它说明"><span class="nav-number">1.5.</span> <span class="nav-text">其它说明</span></a></li></ol></li></ol></div>
             
 
           </div>

@@ -248,7 +248,7 @@
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/2019/02/12/revisit-basic-paxos/" itemprop="url">Revisit Basic Paxos的唯一性</a></h1>
+                <a class="post-title-link" href="/2019/02/12/revisit-basic-paxos/" itemprop="url">Basic Paxos的唯一性保证</a></h1>
         
 
         <div class="post-meta">
@@ -300,15 +300,8 @@
       
         
           
-          Revisit Basic Paxos的唯一性需要满足的条件安全性条件（safety）：
-
-只能选择被提议（propose）的值
-只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又选中了另外不同的值）
-只有当某个值被选中后，才能被其他进程学习到
-
-活性条件（liveness）：
-
-保证最
+          Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。
+Paxos需要满足的条件
           ...
           <!--noindex-->
           <div class="post-button text-center">
