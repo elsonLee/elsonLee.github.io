@@ -79,17 +79,17 @@
 
 
 
-<meta name="description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个">
+<meta name="description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Basic Paxos的唯一性保证">
 <meta property="og:url" content="http://yoursite.com/2019/02/12/revisit-basic-paxos/index.html">
 <meta property="og:site_name" content="Lexun&#39;s Notes">
-<meta property="og:description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个">
+<meta property="og:description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-13T07:52:34.611Z">
+<meta property="og:updated_time" content="2019-02-13T07:54:48.305Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Basic Paxos的唯一性保证">
-<meta name="twitter:description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个">
+<meta name="twitter:description" content="Basic Paxos的唯一性保证通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某">
 
 
 
@@ -299,7 +299,7 @@
       
 
       
-        <h1 id="Basic-Paxos的唯一性保证"><a href="#Basic-Paxos的唯一性保证" class="headerlink" title="Basic Paxos的唯一性保证"></a>Basic Paxos的唯一性保证</h1><p>通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。</p>
+        <h1 id="Basic-Paxos的唯一性保证"><a href="#Basic-Paxos的唯一性保证" class="headerlink" title="Basic Paxos的唯一性保证"></a>Basic Paxos的唯一性保证</h1><p>通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。</p>
 <h2 id="Paxos需要满足的条件"><a href="#Paxos需要满足的条件" class="headerlink" title="Paxos需要满足的条件"></a>Paxos需要满足的条件</h2><p>安全性条件（safety）：</p>
 <ul>
 <li>只能选择被提议（propose）的值</li>
