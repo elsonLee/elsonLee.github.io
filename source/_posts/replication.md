@@ -1,4 +1,4 @@
----
+﻿---
 title: 复制（Replication）
 date: 2019-01-09 13:50:29
 tags:
@@ -109,4 +109,5 @@ follower恢复后，查看自己失效前最后一条log，并以此向leader请
 星型结构和全连接结构需要防止“环”，可以在写操作中记录完成复制的副本ID，检查ID即可确认是否复制过
 环形结构和星形结构的问题在于其中一个节点失效可能导致整个系统不能正常工作，
 
-
+参考资料：
+[1] Martin Kleppmann. 2017. Designing Data-Intensive Applications.
