@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-13T08:00:10.247Z">
+<meta property="og:updated_time" content="2019-02-13T10:20:54.559Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Basic Paxos的唯一性保证">
 <meta name="twitter:description" content="通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是对提议之间建立了某种happens-before关系，保证了在异步环境下能够满足共识值的唯一性。 Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另一个时刻又">
@@ -329,7 +329,7 @@
 </blockquote>
 <p>先看条件1，假设条件2成立，那么在提议{m, v1}选中后，任意提议者提议前学习（通过预提议）到的值一定是v1，只要<strong>[R3] 让提议者提议时携带学习到的值v1即可</strong>。但是，也存在在提议m选中前提议者先学习到值v2，之后提议m才选中的情况，v2和v1可能不同，这种情况直接禁止掉: <strong>[R4] 学习的过程也让预提议接受者保证拒绝接受ID ＜ n的提议的承诺，并且提议者只有得到大多数接受者的回复才能发起新的提议</strong>。这样，只要提议n发起，就意味着存在一个多数人集合答应拒绝接受ID＜n的提议，提议m只能在预提议n完成前选中，否则是无法达成Quorum的（意味着只要提议m被选中，任何接收了提议m的接收者接受ID更大的预提议一定happens after接受提议m）。因此提议n的值一定是在提议m完成后学习到的，同样，只要条件2满足，条件1就能满足。</p>
 <p>再看条件2，学习的过程: <strong>[R5] 提议前给某个大多数集合发送预提议，让对方返回“选中”的值</strong>。但是这个“选中”的值，对每个接受者而言是不知道的，是个全局概念，根据[R1]，每个接收者可以记录已<strong>接受到的ID最大的值</strong>。那么提议者收到来自某个大多数集合中所有接受到的ID最大的值后(没接受过提议就返回空)，怎么从这堆返回值中找出v1？因为只有从中选ID最大/最小的值，才算是“可被学习到的”，那么从中选ID最大的值是否一定等于v1？</p>
-<p>提议{m, v1}被选中，必定存在大多数集合C1接受提议m，提议n（n &gt; m）被发起，根据R4，必定存在大多数集合C2接受了预提议n，C1和C2必有交集，且交集中的接收者事件顺序一定满足：<strong>提议m被选中</strong> happens before <strong>预提议n被接受</strong>（否则提议m达不到Quorum），所以预提议n学习到的值一定是m..n-1范围内的某个提议值，如果n = m+1，那么提议n的值一定是v1。另外，对任意被发起的提议m和n（n &gt; m），一定满足：<strong>预提议m</strong> happens before <strong>预提议n</strong>（否则预提议m达不到Quorum不会被发起）。根据归纳可得：预提议n学习到的值一定是v1，条件2满足。</p>
+<p>提议{m, v1}被选中，必定存在大多数集合C1接受提议m，提议n（n &gt; m）被发起，根据R4，必定存在大多数集合C2接受了预提议n，C1和C2必有交集，且交集中的接收者事件顺序一定满足：<strong>{提议m被选中}$\rightarrow${预提议n被接受}</strong>（否则提议m达不到Quorum），所以预提议n学习到的值一定是m..n-1范围内的某个提议值，如果n = m+1，那么提议n的值一定是v1。另外，对任意被发起的提议m和n（n &gt; m），一定满足：<strong>{预提议m}$\rightarrow${预提议n}</strong>（否则预提议m达不到Quorum不会被发起）。根据归纳可得：预提议n学习到的值一定是v1，条件2满足。</p>
 <h2 id="Paxos流程"><a href="#Paxos流程" class="headerlink" title="Paxos流程"></a>Paxos流程</h2><p>将R1至R5整理，得到Paxos流程：<br>Phase 1.</p>
 <blockquote>
 <p>(a) 提议者发送预提议{n}给某个大多数接收者集合 [R5]<br>(b) 接收者记录接受过的最大预提议ID，收到更大ID的预提议后，回复保证不再接受ID &lt; n的提议，并携带接受过的最大ID的提议值 [R2, R4, R5]</p>
@@ -341,17 +341,19 @@
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>R4是整个算法的关键，建立了以下2个关系：<br>对于任意提议m和提议n（m &lt; n），一旦两个提议都发起，就必定满足：</p>
 <blockquote>
 <ol>
-<li>对任意接受预提议m和n的接收者，预提议m happens before 预提议n</li>
+<li>对任意接受预提议m和n的接收者，{预提议m}$\rightarrow${预提议n}</li>
 </ol>
 </blockquote>
 <p>如果提议m被选中，那么关系将收窄成：</p>
 <blockquote>
 <ol start="2">
-<li>对任意接受提议m和预提议n的接收者，提议m happens before 预提议n</li>
+<li>对任意接受提议m和预提议n的接收者，{提议m}$\rightarrow${预提议n}</li>
 </ol>
 </blockquote>
 <p> 关系1和2加上Quorum条件，可以确定（见上面条件2的证明），如果提议{m, v}被选中，那么预提议n学习到的值一定是v（提议n的值是v），这是确保唯一性的根本原因。</p>
-<h2 id="其它说明"><a href="#其它说明" class="headerlink" title="其它说明"></a>其它说明</h2><p>在某个提议已经被选中的前提下，之后的预提议必定能学习到被选中的值。然而，存在多个提议（不同ID）被不同的少数接受者接受的情况，这时，预提议会学习到<strong>某大多数集合中ID最大的提议值</strong>，即<strong>通过预提议学习到非空值，提议者无法判断之前是否达成共识</strong>，这个可能会在某些场景下引入新的问题。</p>
+<h2 id="其它说明"><a href="#其它说明" class="headerlink" title="其它说明"></a>其它说明</h2><h3 id="对提议ID的要求"><a href="#对提议ID的要求" class="headerlink" title="对提议ID的要求"></a>对提议ID的要求</h3><p>必须<strong>保证提议ID的全局唯一</strong>，假设提议{m, v1}被部分接受，提议{m, v2}也被部分接受，两个提议都未被选中，那么新一轮预提议返回有可能会出现同一个最高ID具有两种不同的值，无法决策在正式提议阶段携带哪个值。</p>
+<p>除了全局唯一外，对于提议ID的生成并没有要求的，任何提议者可以使用随机的ID，只是由于接收者只能接受比已经收到过的预提议ID更大的提议，因此，随机ID会严重影响提议被拒绝的概率，对于同一个提议者来说，保证提议ID单调增是合理的。进一步，保证各个提议者的ID是全局单调递增的能减少各提议者成功率不均匀的情况，这就可以使用Lamport Clock的方式，由于提议者本身也是接收者，提议者的提议ID可以设为max{local_max_id, highest_recv_id} + 1（不过这个方法并不能满足提议ID相同的要求）。</p>
+<h3 id="预提议结果无法判断是否达成共识的问题"><a href="#预提议结果无法判断是否达成共识的问题" class="headerlink" title="预提议结果无法判断是否达成共识的问题"></a>预提议结果无法判断是否达成共识的问题</h3><p>在某个提议已经被选中的前提下，之后的预提议必定能学习到被选中的值。然而，存在多个提议（不同ID）被不同的少数接受者接受的情况，这时，预提议会学习到<strong>某大多数集合中ID最大的提议值</strong>，即<strong>通过预提议学习到非空值，提议者无法判断之前是否达成共识</strong>，这个可能会在某些场景下引入新的问题。</p>
 <p>参考资料：<br>[1] Lamport, L. Paxos made simple. ACM SIGACT News 32, 4 (Dec. 2001), 18-25</p>
 
       
@@ -499,7 +501,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos需要满足的条件"><span class="nav-number">1.</span> <span class="nav-text">Paxos需要满足的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）"><span class="nav-number">2.</span> <span class="nav-text">如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos流程"><span class="nav-number">3.</span> <span class="nav-text">Paxos流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其它说明"><span class="nav-number">5.</span> <span class="nav-text">其它说明</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos需要满足的条件"><span class="nav-number">1.</span> <span class="nav-text">Paxos需要满足的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）"><span class="nav-number">2.</span> <span class="nav-text">如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos流程"><span class="nav-number">3.</span> <span class="nav-text">Paxos流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其它说明"><span class="nav-number">5.</span> <span class="nav-text">其它说明</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#对提议ID的要求"><span class="nav-number">5.1.</span> <span class="nav-text">对提议ID的要求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#预提议结果无法判断是否达成共识的问题"><span class="nav-number">5.2.</span> <span class="nav-text">预提议结果无法判断是否达成共识的问题</span></a></li></ol></li></ol></div>
             
 
           </div>
