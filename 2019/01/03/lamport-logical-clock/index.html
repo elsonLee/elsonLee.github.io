@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="对Lamport Logical Clock的理解不合理的事件发生顺序通常人们习惯使用物理时间来描述多个事件发生的前后关系，比如，event A发生的时间早于event B发生的时间，那么可以得出结论A happened before B，这似乎是一个简单得不值得探讨的问题。然而，对于生活中的大多数情况而言，event A和event B要么发生在同一个地点、基于的是同一个时钟，要么两个事件发生的">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-11T04:26:52.464Z">
+<meta property="og:updated_time" content="2019-02-13T12:26:48.766Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="lamport logical clock">
 <meta name="twitter:description" content="对Lamport Logical Clock的理解不合理的事件发生顺序通常人们习惯使用物理时间来描述多个事件发生的前后关系，比如，event A发生的时间早于event B发生的时间，那么可以得出结论A happened before B，这似乎是一个简单得不值得探讨的问题。然而，对于生活中的大多数情况而言，event A和event B要么发生在同一个地点、基于的是同一个时钟，要么两个事件发生的">
@@ -353,6 +353,7 @@
 </blockquote>
 <p>现在证明5个规则能够满足条件I-III,<br>首先，规则5(ii)和假设1、2能够推得，$P_i$被认为获得资源时，请求队列中已经包含了其余进程发送的、时间戳小于$T_m$的所有请求（这些请求一定在5(ii)收到的那些消息之前被收到），然而$T_m:P_i$根据$\Rightarrow$关系排在队列之首，说明没有来自其余进程小于$T_m:P_i$的请求，因为规则3、4是唯二从请求队列中移除消息的规则，因此条件I是成立的。<br>其次，若当前资源被释放，那么某个进程的请求队列之首会是来自自身的请求消息$T_n:P_j$，并且根据规则2，$P_j$请求队列中一定包含了所有其余进程发送的时间戳大于$T_n$的消息，满足5(ii)。这个顺序是以$\Rightarrow$的顺序为依据的，而$\Rightarrow$的顺序是对happened-before顺序的扩展，其并不会破坏事件发生的causality。所以按照$\Rightarrow$的顺序获得锁一定满足同一进程中请求的顺序，因此条件II满足。<br>最后，规则3和4暗示了每个进程最终会释放资源，释放后自然会有新的进程符合规则5，条件III成立。</p>
 <p>从另一种角度去理解的话，<strong>逻辑时间使得不同进程对于整个分布式事件的顺序达成了一致</strong>，如果将每个进程看成一个状态机（State Machine），这些分布式事件构成了状态机的命令（Command），包括$P_i$请求资源、$P_i$释放资源。执行请求资源命令时，每个进程向自身的请求队列中添加消息（请求队列也是状态机的一部分），执行释放资源则移除消息。每个进程独立地执行状态机命令。<strong>之所以能够同步，是因为当进程在接收到所有其他进程发送的时间戳小于$T_m$的消息后，执行$T_m$消息的顺序就是确定的，并且对于每一个进程来说都是一致的</strong>。所以这种同步需要所有进程的参与，只要有进程失效，整个系统将无法正确工作。</p>
+<p>参考资料：<br>[1] Lamport, L. 1978. Time, clocks, and the ordering of events in a distributed system. </p>
 
       
     </div>

@@ -89,7 +89,7 @@
 <meta property="og:image" content="http://yoursite.com/2019/01/09/replication/consistent_prefix_reads.PNG">
 <meta property="og:image" content="http://yoursite.com/2019/01/09/replication/multi-leader-causality.PNG">
 <meta property="og:image" content="http://yoursite.com/2019/01/09/replication/multi-leader-topologies.PNG">
-<meta property="og:updated_time" content="2019-02-11T04:26:52.465Z">
+<meta property="og:updated_time" content="2019-02-13T12:27:23.596Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="复制（Replication）">
 <meta name="twitter:description" content="复制（Replication）使用复制的理由与面临的问题定义：通过互联网络，在不同的机器（machine）上保存相同的数据 几点理由：   兼顾地理位置迥异的客户，减少他们的访问延迟（latency） 机器互相备份，提高可用性（availability） 水平扩展（scale out）机器数目，提高读吞吐率（read throughput）（注：实现强一致性（strong consistency)">
@@ -381,6 +381,7 @@
 <li>星形结构（Star topology）</li>
 <li>全连接结构（All-to-all topology）（常用）<br><img src="multi-leader-topologies.PNG" alt=""><br>星型结构和全连接结构需要防止“环”，可以在写操作中记录完成复制的副本ID，检查ID即可确认是否复制过<br>环形结构和星形结构的问题在于其中一个节点失效可能导致整个系统不能正常工作，</li>
 </ul>
+<p>参考资料：<br>[1] Martin Kleppmann. 2017. Designing Data-Intensive Applications.</p>
 
       
     </div>
