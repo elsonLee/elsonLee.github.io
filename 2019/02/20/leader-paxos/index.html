@@ -79,14 +79,17 @@
 
 
 
-<meta property="og:type" content="website">
-<meta property="og:title" content="tags">
-<meta property="og:url" content="http://yoursite.com/tags/index.html">
+<meta name="description" content="从leaderless到leader-based在上篇Leaderless multi-Paxos Replicated State Machine中分析了leaderless multi-paxos的一些特点，包括支持client通过各个server并发提交（但是需要注意并发度大时，log index的选择很容易冲突）、每次提交执行一轮完整的single decree流程、每个paxos ins">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Leader-based multi-Paxos Replicated State Machine">
+<meta property="og:url" content="http://yoursite.com/2019/02/20/leader-paxos/index.html">
 <meta property="og:site_name" content="Lexun&#39;s Notes">
+<meta property="og:description" content="从leaderless到leader-based在上篇Leaderless multi-Paxos Replicated State Machine中分析了leaderless multi-paxos的一些特点，包括支持client通过各个server并发提交（但是需要注意并发度大时，log index的选择很容易冲突）、每次提交执行一轮完整的single decree流程、每个paxos ins">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-11T04:26:52.472Z">
+<meta property="og:updated_time" content="2019-02-20T03:41:34.529Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="tags">
+<meta name="twitter:title" content="Leader-based multi-Paxos Replicated State Machine">
+<meta name="twitter:description" content="从leaderless到leader-based在上篇Leaderless multi-Paxos Replicated State Machine中分析了leaderless multi-paxos的一些特点，包括支持client通过各个server并发提交（但是需要注意并发度大时，log index的选择很容易冲突）、每次提交执行一轮完整的single decree流程、每个paxos ins">
 
 
 
@@ -116,13 +119,13 @@
 
 
 
-  <link rel="canonical" href="http://yoursite.com/tags/">
+  <link rel="canonical" href="http://yoursite.com/2019/02/20/leader-paxos/">
 
 
 
 
 
-  <title>tags | Lexun's Notes</title>
+  <title>Leader-based multi-Paxos Replicated State Machine | Lexun's Notes</title>
   
 
 
@@ -217,40 +220,150 @@
 
   <div id="posts" class="posts-expand">
     
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/02/20/leader-paxos/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Lexun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Lexun's Notes">
+    </span>
+
     
-    
-    <div class="post-block page">
       <header class="post-header">
 
-	<h1 class="post-title" itemprop="name headline">tags</h1>
-
-
-
-</header>
-
-      
-      
-      
-      <div class="post-body">
         
         
-          <div class="tag-cloud">
-            <div class="tag-cloud-title">
-                暂无标签
-            </div>
-            <div class="tag-cloud-tags">
+          <h1 class="post-title" itemprop="name headline">Leader-based multi-Paxos Replicated State Machine</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
               
-            </div>
-          </div>
-        
-      </div>
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-02-20T11:38:23+08:00">
+                2019-02-20
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
       
       
+
+      
+        <h2 id="从leaderless到leader-based"><a href="#从leaderless到leader-based" class="headerlink" title="从leaderless到leader-based"></a>从leaderless到leader-based</h2><p>在上篇<a href="https://elsonlee.github.io/2019/02/13/leaderless-paxos/" target="_blank" rel="noopener">Leaderless multi-Paxos Replicated State Machine</a>中分析了leaderless multi-paxos的一些特点，包括支持client通过各个server并发提交（但是需要注意并发度大时，log index的选择很容易冲突）、每次提交执行一轮完整的single decree流程、每个paxos instance内要保证所有的提议ID必须唯一、冲突的发生导致提议可能在预提议阶段或提议阶段被拒绝、“空洞”的存在，等等。</p>
+<p>leader-based multi-paxos是对leaderless方案的一种优化。由于log index的冲突原因在于client互相不知道对方的提议，所有的提议如果通过单一leader或少量leader进行，就不容易甚至不会冲突。并且，通过leader同样可以实现并行提交，只是对于leader的资源使用比leaderless更多。另一方面，leaderless方案中每个paxos instance需要预提议阶段，原因是在多个client同时像paxos instance提议情况下，需要学习可能选中的旧值，确保唯一性，但是在单一leader下，对于paxos instance的提议都可通过唯一leader进行，在单一leader工作时，无需预提议阶段（在leader transfer过程中仍然需要）。因此，在引入新的、可接受的代价下，leader-based方案能够保证并发度，减少冲突，减少消息数量。</p>
+<p>优点:</p>
+<ol>
+<li><strong>冲突解决</strong>：leaderless方案中，log index在不同的server上生成，容易冲突，冲突既可能在预提议阶段发生，也可能在正式提议（accept）阶段发生，后者重试的代价更大（假设有算法可以满足各个server并发选择的log index冲突几率较小，这一定也是个分布式算法，执行代价也不可不计）。leader-based方案在一个leader lease内完全可通过本地原子计数器并发地为不同的paxos instance选择log index，不会冲突，且代价小。</li>
+<li><strong>预提议优化</strong>：leaderless方案中，每个paxos instance都要走完整个single decree流程，由于不知道其他server是否提交过新的提议，所以总是要通过预提议流程去确认。leader-based方案由于在自己的leader lease内所有提交都是通过自己，因此可以在lease内完全省去预提议流程，节省资源开销。</li>
+<li><strong>正确性</strong>：Leader-based multi paxos还有个好处是，即便出现brain split，大不了短期内退化成leaderless方案，不会对正确性有影响。</li>
+</ol>
+<p>缺点：</p>
+<ol>
+<li><strong>leader负载高</strong>：Leaderless方案中，大量client可以通过负载均衡选择向不同的server请求。leader-based方案，所有client只能向唯一的leader请求，对leader的网络带宽和cpu是个挑战。同时，无法像leaderless那样照顾到不同地理位置的client，减少延迟。也无法支持通过不同server读以提高读吞吐率（在线性一致性前提下）。</li>
+</ol>
+<p>参考资料：<br>[1] Lamport, L. 2001. Paxos made simple.<br>[2] John Ousterhout and Diego Ongaro. 2013. Implementing Replicated Logs with Paxos.<br>[3] 郁白. 2015. 使用Multi-Paxos协议的日志同步与恢复.</p>
+
       
     </div>
     
     
     
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/02/13/leaderless-paxos/" rel="next" title="Leaderless multi-Paxos Replicated State Machine">
+                <i class="fa fa-chevron-left"></i> Leaderless multi-Paxos Replicated State Machine
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
   </div>
 
 
@@ -283,8 +396,17 @@
       
 
       
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
 
-      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+      <section class="site-overview-wrap sidebar-panel">
         <div class="site-overview">
           <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
             
@@ -326,6 +448,22 @@
         </div>
       </section>
 
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#从leaderless到leader-based"><span class="nav-number">1.</span> <span class="nav-text">从leaderless到leader-based</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
       
 
       
