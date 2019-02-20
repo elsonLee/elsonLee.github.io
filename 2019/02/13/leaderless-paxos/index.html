@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="摘要：总结了从single decree到leaderless multi-paxos的演进，并行化提交的可行性与限制，以及一些涉及实现的细节。 从single instance到multi instance如果把对一个值的共识确定过程称为一个paxos instance，那么一个基于paxos的replicated state machine实现，其log的每个index都对应一个paxos i">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-20T05:10:53.327Z">
+<meta property="og:updated_time" content="2019-02-20T12:32:55.172Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Leaderless multi-Paxos Replicated State Machine">
 <meta name="twitter:description" content="摘要：总结了从single decree到leaderless multi-paxos的演进，并行化提交的可行性与限制，以及一些涉及实现的细节。 从single instance到multi instance如果把对一个值的共识确定过程称为一个paxos instance，那么一个基于paxos的replicated state machine实现，其log的每个index都对应一个paxos i">
@@ -318,8 +318,12 @@
 <p>如果接收者重启完成并在之前成功做了持久化，那么这轮paxos在预提议阶段学习到的值就一定是已经commit了的值，处理见第三种情况<br>如果预提议返回的都是$noacceptedValue$回复，这种情况可能是server failed，并只有少量或没有节点接受提议，预提议没收到任何$acceptedValue$，那么重新针对该log index发起新一轮paxos，并把value设为空（no-op），这就产生了“空洞”（为了不阻塞apply）<br>如果只是少数集合接受了提议，那么新的一轮paxos中，预提议学习到的可能是个uncommitted值，由于学习到值并不能判断是否达成一致，所以第一第三种情况必须一视同仁，重新针对当前log index发起一轮paxos</p>
 </blockquote>
 <h3 id="Full-Disclosure"><a href="#Full-Disclosure" class="headerlink" title="Full Disclosure"></a>Full Disclosure</h3><p>TODO</p>
-<h2 id="读写操作"><a href="#读写操作" class="headerlink" title="读写操作"></a>读写操作</h2><p>这里的读写操作指的是对state machine的读写。在满足线性一致性的前提下，需要</p>
-<h3 id="读操作"><a href="#读操作" class="headerlink" title="读操作"></a>读操作</h3><p>参考资料：<br>[1] Lamport, L. 2001. Paxos made simple.<br>[2] John Ousterhout and Diego Ongaro. 2013. Implementing Replicated Logs with Paxos.<br>[3] 郁白. 2015. 使用Basic-Paxos协议的日志同步与恢复.</p>
+<h2 id="读写操作"><a href="#读写操作" class="headerlink" title="读写操作"></a>读写操作</h2><p>这里的读写操作指的是对state machine的读写。在满足线性一致性的前提下，通常都需要进行一轮新的paxos流程，将读/写操作记录在log中，后apply到state machine。</p>
+<h3 id="为什么读操作也需要通过log，不直接从本地state-machine返回数据？"><a href="#为什么读操作也需要通过log，不直接从本地state-machine返回数据？" class="headerlink" title="为什么读操作也需要通过log，不直接从本地state machine返回数据？"></a>为什么读操作也需要通过log，不直接从本地state machine返回数据？</h3><p>因为leaderless multi-paxos支持从任意server提交指令，因此，如果该server是“落后”的，从本地state machine直接读可能读出stale data。因此<strong>只有进行一轮新的paxos（指令就是本次读操作）并保证log index更小的所有提议都被apply后，读出的值才能保证是最新的</strong>。</p>
+<h3 id="写操作"><a href="#写操作" class="headerlink" title="写操作"></a>写操作</h3><p>通过一轮新的paxos流程，只要提交即可返回（达成Quorum，无需apply，因为提交意味着指令最终将被多数server执行）</p>
+<h3 id="读操作"><a href="#读操作" class="headerlink" title="读操作"></a>读操作</h3><p>通过一轮新的paxos流程，并等待之前所有提议全部apply后才可返回需要的值（写操作的apply可能延迟到读才执行，有点像lazy execution）。</p>
+<p>所以，对于leaderless multi-paxos，<strong>写操作的延迟很小（提交即可返回），读操作延迟较高（需要等之前的都apply）</strong>。</p>
+<p>参考资料：<br>[1] Lamport, L. 2001. Paxos Made Simple.<br>[2] Tushar Chandra, Robert Griesemer, Joshua Redstone. 2007. Paxos Made Live - An Engineering Perspective.<br>[3] John Ousterhout and Diego Ongaro. 2013. Implementing Replicated Logs with Paxos.<br>[4] 郁白. 2015. 使用Basic-Paxos协议的日志同步与恢复.</p>
 
       
     </div>
@@ -433,7 +437,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">6</span>
+                  <span class="site-state-item-count">7</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -470,7 +474,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#从single-instance到multi-instance"><span class="nav-number">1.</span> <span class="nav-text">从single instance到multi instance</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#并发的可行性分析"><span class="nav-number">1.1.</span> <span class="nav-text">并发的可行性分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#关于并行化程度"><span class="nav-number">1.2.</span> <span class="nav-text">关于并行化程度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Log-Index的选择"><span class="nav-number">1.3.</span> <span class="nav-text">Log Index的选择</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#提议ID的选择"><span class="nav-number">1.4.</span> <span class="nav-text">提议ID的选择</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#发起single-decree"><span class="nav-number">1.5.</span> <span class="nav-text">发起single decree</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#预提议返回-acceptedValue"><span class="nav-number">1.6.</span> <span class="nav-text">预提议返回$acceptedValue$</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#正式提议与client的处理逻辑"><span class="nav-number">1.7.</span> <span class="nav-text">正式提议与client的处理逻辑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Unknown的处理与“空洞”"><span class="nav-number">1.8.</span> <span class="nav-text">Unknown的处理与“空洞”</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Full-Disclosure"><span class="nav-number">1.9.</span> <span class="nav-text">Full Disclosure</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读写操作"><span class="nav-number">2.</span> <span class="nav-text">读写操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#读操作"><span class="nav-number">2.1.</span> <span class="nav-text">读操作</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#从single-instance到multi-instance"><span class="nav-number">1.</span> <span class="nav-text">从single instance到multi instance</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#并发的可行性分析"><span class="nav-number">1.1.</span> <span class="nav-text">并发的可行性分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#关于并行化程度"><span class="nav-number">1.2.</span> <span class="nav-text">关于并行化程度</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Log-Index的选择"><span class="nav-number">1.3.</span> <span class="nav-text">Log Index的选择</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#提议ID的选择"><span class="nav-number">1.4.</span> <span class="nav-text">提议ID的选择</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#发起single-decree"><span class="nav-number">1.5.</span> <span class="nav-text">发起single decree</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#预提议返回-acceptedValue"><span class="nav-number">1.6.</span> <span class="nav-text">预提议返回$acceptedValue$</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#正式提议与client的处理逻辑"><span class="nav-number">1.7.</span> <span class="nav-text">正式提议与client的处理逻辑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Unknown的处理与“空洞”"><span class="nav-number">1.8.</span> <span class="nav-text">Unknown的处理与“空洞”</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Full-Disclosure"><span class="nav-number">1.9.</span> <span class="nav-text">Full Disclosure</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读写操作"><span class="nav-number">2.</span> <span class="nav-text">读写操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#为什么读操作也需要通过log，不直接从本地state-machine返回数据？"><span class="nav-number">2.1.</span> <span class="nav-text">为什么读操作也需要通过log，不直接从本地state machine返回数据？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#写操作"><span class="nav-number">2.2.</span> <span class="nav-text">写操作</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#读操作"><span class="nav-number">2.3.</span> <span class="nav-text">读操作</span></a></li></ol></li></ol></div>
             
 
           </div>
