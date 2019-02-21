@@ -79,14 +79,17 @@
 
 
 
+<meta name="description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 不同的选值思路Raft的Term如同multi-pa">
 <meta property="og:type" content="article">
-<meta property="og:title" content="raft-simple">
+<meta property="og:title" content="Raft简单在哪儿？">
 <meta property="og:url" content="http://yoursite.com/2019/02/20/raft-simple/index.html">
 <meta property="og:site_name" content="Lexun&#39;s Notes">
+<meta property="og:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 不同的选值思路Raft的Term如同multi-pa">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-20T05:22:43.591Z">
+<meta property="og:updated_time" content="2019-02-21T00:56:14.789Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="raft-simple">
+<meta name="twitter:title" content="Raft简单在哪儿？">
+<meta name="twitter:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 不同的选值思路Raft的Term如同multi-pa">
 
 
 
@@ -122,7 +125,7 @@
 
 
 
-  <title>raft-simple | Lexun's Notes</title>
+  <title>Raft简单在哪儿？ | Lexun's Notes</title>
   
 
 
@@ -246,7 +249,7 @@
 
         
         
-          <h1 class="post-title" itemprop="name headline">raft-simple</h1>
+          <h1 class="post-title" itemprop="name headline">Raft简单在哪儿？</h1>
         
 
         <div class="post-meta">
@@ -296,7 +299,12 @@
       
 
       
-        
+        <p>摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。</p>
+<h2 id="Raft对multi-Paxos的简化"><a href="#Raft对multi-Paxos的简化" class="headerlink" title="Raft对multi-Paxos的简化"></a>Raft对multi-Paxos的简化</h2><p>Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。</p>
+<h3 id="不同的选值思路"><a href="#不同的选值思路" class="headerlink" title="不同的选值思路"></a>不同的选值思路</h3><p>Raft的Term如同multi-paxos（以下均指leader-based multi-Paxos）的提议ID，一旦leader选出后，所有的消息Term都固定。然后paxos协议要求multi-paxos对于paxos instance的提议ID必须全局唯一，实现通常使用timestamp + ip的形式。而Raft的leader选举采用了另外的方法，无需保证Term全局唯一。</p>
+<p>这是由于选择了和paxos策略不同的选值思路，paxos对于两个多数集合交集选值的唯一性保证是通过v2 = v1达成（<a href="https://elsonlee.github.io/2019/02/12/revisit-basic-paxos/#%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E6%BB%A1%E8%B6%B3%E5%94%AF%E4%B8%80%E6%80%A7%EF%BC%88%E4%BB%A5%E4%B8%8B%E6%8E%A8%E5%AF%BC%E5%92%8CLamport%E5%8E%9F%E6%96%87%E7%95%A5%E6%9C%89%E4%B8%8D%E5%90%8C%EF%BC%8C%E4%BD%86%E4%BD%BF%E7%94%A8%E5%88%B0%E7%9A%84%E6%8E%A8%E8%AE%BA%E5%87%A0%E4%B9%8E%E7%9B%B8%E5%90%8C%EF%BC%89" target="_blank" rel="noopener">paxos唯一性保证</a>），而raft在leader election中采用接受v1后拒绝v2的方法，如果达不成一致则重新选择，不需要“学习”v1（学习需要查询其它server），只需要拒绝，自然简单多了。只要定下拒绝Term小于local Term的规则，那么Term的实现就不难决定，</p>
+<h2 id="读写操作"><a href="#读写操作" class="headerlink" title="读写操作"></a>读写操作</h2><h3 id="读操作优化"><a href="#读操作优化" class="headerlink" title="读操作优化"></a>读操作优化</h3><p>通过一轮新的paxos流程，并等待之前所有提议全部apply后才可返回需要的值（写操作的apply可能延迟到读才执行，有点像lazy execution）。</p>
+
       
     </div>
     
@@ -380,8 +388,17 @@
       
 
       
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
 
-      <section class="site-overview-wrap sidebar-panel sidebar-panel-active">
+      <section class="site-overview-wrap sidebar-panel">
         <div class="site-overview">
           <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
             
@@ -423,6 +440,22 @@
         </div>
       </section>
 
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Raft对multi-Paxos的简化"><span class="nav-number">1.</span> <span class="nav-text">Raft对multi-Paxos的简化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#不同的选值思路"><span class="nav-number">1.1.</span> <span class="nav-text">不同的选值思路</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读写操作"><span class="nav-number">2.</span> <span class="nav-text">读写操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#读操作优化"><span class="nav-number">2.1.</span> <span class="nav-text">读操作优化</span></a></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
       
 
       
