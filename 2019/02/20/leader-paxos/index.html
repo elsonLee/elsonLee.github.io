@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="从leaderless到leader-based在上篇Leaderless multi-Paxos Replicated State Machine中分析了leaderless multi-paxos的一些特点，包括支持client通过各个server并发提交（但是需要注意并发度大时，log index的选择很容易冲突）、每次提交执行一轮完整的single decree流程、每个paxos ins">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-20T03:41:34.529Z">
+<meta property="og:updated_time" content="2019-02-21T00:58:22.657Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Leader-based multi-Paxos Replicated State Machine">
 <meta name="twitter:description" content="从leaderless到leader-based在上篇Leaderless multi-Paxos Replicated State Machine中分析了leaderless multi-paxos的一些特点，包括支持client通过各个server并发提交（但是需要注意并发度大时，log index的选择很容易冲突）、每次提交执行一轮完整的single decree流程、每个paxos ins">
@@ -311,7 +311,21 @@
 <ol>
 <li><strong>leader负载高</strong>：Leaderless方案中，大量client可以通过负载均衡选择向不同的server请求。leader-based方案，所有client只能向唯一的leader请求，对leader的网络带宽和cpu是个挑战。同时，无法像leaderless那样照顾到不同地理位置的client，减少延迟。也无法支持通过不同server读以提高读吞吐率（在线性一致性前提下）。</li>
 </ol>
-<p>参考资料：<br>[1] Lamport, L. 2001. Paxos made simple.<br>[2] John Ousterhout and Diego Ongaro. 2013. Implementing Replicated Logs with Paxos.<br>[3] 郁白. 2015. 使用Multi-Paxos协议的日志同步与恢复.</p>
+<h2 id="Leader-based方案的改进点"><a href="#Leader-based方案的改进点" class="headerlink" title="Leader-based方案的改进点"></a>Leader-based方案的改进点</h2><h3 id="增加Leader的选择"><a href="#增加Leader的选择" class="headerlink" title="增加Leader的选择"></a>增加Leader的选择</h3><p>leader机制大概存在两种：</p>
+<blockquote>
+<ol>
+<li>在某个提议者提交成功后，接受提议的接受者之后一段时间内不再接受client请求（lease机制），使得之后的请求都route到提议者，提议者周期性地发送心跳消息给每个server以更新自己的lease（提议者心跳间隔要比lease短，且之前的多数接受者只接受当前leader的心跳），这是一种通过调整请求接受的策略达到自动选择leader的功能 [chubby做法]。（接受者只能接受一个leader的心跳，就能保证唯一leader）</li>
+<li>通过single decree决议出一个leader，然后类似方案1的方式实现lease管理（这种leader也叫master）。</li>
+</ol>
+</blockquote>
+<p>不管是那种实现方式，leader的产生都需要一个额外的预提议过程。<br>注：leader lease的语义：只要leader的lease不到期，其它server就不能成功向paxos提交。</p>
+<h3 id="提议ID的选择"><a href="#提议ID的选择" class="headerlink" title="提议ID的选择"></a>提议ID的选择</h3><p>leaderless方案中，采用了一个统一的、全局唯一、单调递增的ID生成方式（比如：local timestamp + ip，<a href="https://elsonlee.github.io/2019/02/13/leaderless-paxos/#%E6%8F%90%E8%AE%AEID%E7%9A%84%E9%80%89%E6%8B%A9" target="_blank" rel="noopener">参考leaderless方案</a>），实际上前文分析了每个paxos instance的提议ID之间并不需要保证不相同，<strong>在一个leader lease内针对各个log index的所有提议都可以使用同一个提议ID</strong>，如果提议被拒绝，反而表示存在其它leader也在提议，当前被拒绝leader可以放弃leader身份了，因此可以把提议ID的变化看成是一次leader角色的变化。</p>
+<h3 id="Log-index的选择"><a href="#Log-index的选择" class="headerlink" title="Log index的选择"></a>Log index的选择</h3><p>leaderless方案中，由于要解决external causality问题，并且各自不知道其它server的client请求前提下，只能确保新的log index &gt; 已提交的最大log index。多个server容易在log index选择上冲突（<a href="https://elsonlee.github.io/2019/02/13/leaderless-paxos/#Log-Index%E7%9A%84%E9%80%89%E6%8B%A9" target="_blank" rel="noopener">参考leaderless方案</a>）。然而，leader-based方案<strong>只需要使用last_log_index + 1即可</strong>（不会冲突，也不需要向其它接受者询问）。</p>
+<h3 id="发起部分single-decree"><a href="#发起部分single-decree" class="headerlink" title="发起部分single decree"></a>发起部分single decree</h3><p>single decree比leaderless简单许多，只有唯一leader，直接正式提议（accept）即可，log index递增。</p>
+<h2 id="读写操作"><a href="#读写操作" class="headerlink" title="读写操作"></a>读写操作</h2><p>leader-based方案的读写操作过程和leaderless方案大致相同（<a href="https://elsonlee.github.io/2019/02/13/leaderless-paxos/#%E8%AF%BB%E5%86%99%E6%93%8D%E4%BD%9C" target="_blank" rel="noopener">参考leaderless方案</a>），但是可以进行若干优化。</p>
+<h3 id="读操作优化"><a href="#读操作优化" class="headerlink" title="读操作优化"></a>读操作优化</h3><p>leaderless方案不能直接从本地state machine读取数据的原因在于client支持从任意server提交指令，然而，server可能是“落后”的，为了防止stale data，必须进行一轮新的paxos。</p>
+<p>对于leader-based方案来说，leader一定是up-to-date的，或者通过新执行一轮paxos达到up-to-date。</p>
+<p>参考资料：<br>[1] Lamport, L. 2001. Paxos made simple.<br>[2] Tushar Chandra, Robert Griesemer, Joshua Redstone. 2007. Paxos Made Live - An Engineering Perspective.<br>[3] John Ousterhout and Diego Ongaro. 2013. Implementing Replicated Logs with Paxos.<br>[4] Diego Ongaro. 2014. Consensus: Bridging Theory And Practice.<br>[5] 郁白. 2015. 使用Multi-Paxos协议的日志同步与恢复.</p>
 
       
     </div>
@@ -462,7 +476,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#从leaderless到leader-based"><span class="nav-number">1.</span> <span class="nav-text">从leaderless到leader-based</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#从leaderless到leader-based"><span class="nav-number">1.</span> <span class="nav-text">从leaderless到leader-based</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Leader-based方案的改进点"><span class="nav-number">2.</span> <span class="nav-text">Leader-based方案的改进点</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#增加Leader的选择"><span class="nav-number">2.1.</span> <span class="nav-text">增加Leader的选择</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#提议ID的选择"><span class="nav-number">2.2.</span> <span class="nav-text">提议ID的选择</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Log-index的选择"><span class="nav-number">2.3.</span> <span class="nav-text">Log index的选择</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#发起部分single-decree"><span class="nav-number">2.4.</span> <span class="nav-text">发起部分single decree</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读写操作"><span class="nav-number">3.</span> <span class="nav-text">读写操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#读操作优化"><span class="nav-number">3.1.</span> <span class="nav-text">读操作优化</span></a></li></ol></li></ol></div>
             
 
           </div>
