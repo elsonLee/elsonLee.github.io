@@ -79,17 +79,17 @@
 
 
 
-<meta name="description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 不同的选值思路Raft的Term如同multi-pa">
+<meta name="description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 选值思路的简化Raft的Term如同multi-pa">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Raft简单在哪儿？">
 <meta property="og:url" content="http://yoursite.com/2019/02/20/raft-simple/index.html">
 <meta property="og:site_name" content="Lexun&#39;s Notes">
-<meta property="og:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 不同的选值思路Raft的Term如同multi-pa">
+<meta property="og:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 选值思路的简化Raft的Term如同multi-pa">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-21T00:56:14.789Z">
+<meta property="og:updated_time" content="2019-02-21T15:32:05.745Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Raft简单在哪儿？">
-<meta name="twitter:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 不同的选值思路Raft的Term如同multi-pa">
+<meta name="twitter:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 选值思路的简化Raft的Term如同multi-pa">
 
 
 
@@ -301,8 +301,18 @@
       
         <p>摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。</p>
 <h2 id="Raft对multi-Paxos的简化"><a href="#Raft对multi-Paxos的简化" class="headerlink" title="Raft对multi-Paxos的简化"></a>Raft对multi-Paxos的简化</h2><p>Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。</p>
-<h3 id="不同的选值思路"><a href="#不同的选值思路" class="headerlink" title="不同的选值思路"></a>不同的选值思路</h3><p>Raft的Term如同multi-paxos（以下均指leader-based multi-Paxos）的提议ID，一旦leader选出后，所有的消息Term都固定。然后paxos协议要求multi-paxos对于paxos instance的提议ID必须全局唯一，实现通常使用timestamp + ip的形式。而Raft的leader选举采用了另外的方法，无需保证Term全局唯一。</p>
-<p>这是由于选择了和paxos策略不同的选值思路，paxos对于两个多数集合交集选值的唯一性保证是通过v2 = v1达成（<a href="https://elsonlee.github.io/2019/02/12/revisit-basic-paxos/#%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E6%BB%A1%E8%B6%B3%E5%94%AF%E4%B8%80%E6%80%A7%EF%BC%88%E4%BB%A5%E4%B8%8B%E6%8E%A8%E5%AF%BC%E5%92%8CLamport%E5%8E%9F%E6%96%87%E7%95%A5%E6%9C%89%E4%B8%8D%E5%90%8C%EF%BC%8C%E4%BD%86%E4%BD%BF%E7%94%A8%E5%88%B0%E7%9A%84%E6%8E%A8%E8%AE%BA%E5%87%A0%E4%B9%8E%E7%9B%B8%E5%90%8C%EF%BC%89" target="_blank" rel="noopener">paxos唯一性保证</a>），而raft在leader election中采用接受v1后拒绝v2的方法，如果达不成一致则重新选择，不需要“学习”v1（学习需要查询其它server），只需要拒绝，自然简单多了。只要定下拒绝Term小于local Term的规则，那么Term的实现就不难决定，</p>
+<h3 id="选值思路的简化"><a href="#选值思路的简化" class="headerlink" title="选值思路的简化"></a>选值思路的简化</h3><p>Raft的Term如同multi-paxos（以下均指leader-based multi-Paxos）的提议ID，一旦leader选出后，在一个leader lease中所有的消息Term都不变，Term可以被视为一个leader lease的标识。paxos协议要求multi-paxos对于paxos instance的提议ID必须全局唯一，实现通常使用timestamp + ip的形式，为了保证”Only a single value is chosen（不会出现先后不同的值被选中的情况）”的规则。实际对于leader election的场景无需满足如此严苛的要求，而Raft的leader选举就采用了不同的方法，无需保证不同server消息携带的Term全局唯一。</p>
+<p>这是由于选择了和paxos策略不同的选值思路，paxos对于两个多数集合交集选值的唯一性保证是通过v2 = v1达成（<a href="https://elsonlee.github.io/2019/02/12/revisit-basic-paxos/#%E5%A6%82%E4%BD%95%E4%BF%9D%E8%AF%81%E6%BB%A1%E8%B6%B3%E5%94%AF%E4%B8%80%E6%80%A7%EF%BC%88%E4%BB%A5%E4%B8%8B%E6%8E%A8%E5%AF%BC%E5%92%8CLamport%E5%8E%9F%E6%96%87%E7%95%A5%E6%9C%89%E4%B8%8D%E5%90%8C%EF%BC%8C%E4%BD%86%E4%BD%BF%E7%94%A8%E5%88%B0%E7%9A%84%E6%8E%A8%E8%AE%BA%E5%87%A0%E4%B9%8E%E7%9B%B8%E5%90%8C%EF%BC%89" target="_blank" rel="noopener">paxos唯一性保证</a>）。其实对于这个问题还有一种思路，就是选择接受v1后拒绝之后所有的提议，但是问题是极有可能永远达不成一致，那么就改进下，一次达不成一致就再试一次，直到达成一致后，拒绝之后所有的提议，这就是Raft leader election的思路。candidate发送vote给所有server，得到多数集合接受就周期性发送心跳禁止server成为新的candiate，如果不满足多数集合接受，则继续令其自由vote。所以Raft对于唯一性的要求是：<strong>在某个Term下，保证最多只有一个leader被选中</strong>，如果没选中，那么就通过electionTimeout机制递增Term进行下一轮选举，并且拒绝接受所有Term &lt; currentTerm的提议。如果同时有两个leader被选中，那么至少存在两个多数集合各自接受了两个leader的vote，两个集合必有交集先后选择了两个leader，<strong>通过 1.将term实现为logcial clock（先到的vote先更新了currentTime，并设置votedFor），2.server拒绝Term &gt;= currentTerm，且votedFor != null或votedFor != candidateId， 可得，必定拒绝后一个vote</strong>。在Raft中，不需要“学习”v1（学习需要查询其它server），只需要拒绝，自然简单多了。</p>
+<h3 id="复制流程的简化"><a href="#复制流程的简化" class="headerlink" title="复制流程的简化"></a>复制流程的简化</h3><p>multi-paxos由于unknown和乱序commit的问题会产生“空洞”，在提议commit后不能直接apply到state machine，因为之前的提议不一定已经成功commit以及apply，可能和当前paxos instance是并发关系，因此必须等之前所有的提议都apply后才能apply（由于乱序commit的关系，需要使用类似数组的数据结构记录已commit的instance）。Raft通过引入<strong>Log Matching Property</strong>来保证，<strong>在{index, term}已经committed的前提下</strong>（不commit的情况，由于server fail等原因会导致不同）：</p>
+<blockquote>
+<ol>
+<li>任意两个属于不同log但有相同index和term的entry一定存储着同样的指令</li>
+<li>任意两个属于不同log但有相同index和term的entry，他们前序的所有entry都一一对应地相同。</li>
+</ol>
+</blockquote>
+<p>因为每个term最多对应一个leader，每个leader在给定index上只会产生一个entry，同时Raft又引入<strong>Leader Append-Only原则</strong>，确保log不会被改写，因此条件1成立。对于条件2，Raft中的AppendEntries RPC相当于multi-paxos中的Accept消息，用来正式提议， 只要达成Quorum就可以commit。但为了保证条件2，Raft在AppendEntries上实现了<strong>前序一致性检查</strong>的逻辑，即受到AE后发现如果prevLogIndex对应entry的term不是prevLogTerm，则回复false，让leader递减prevLogIndex并重试，如果前序一致，则将AE携带的entry都append到本地log，使得各个log始终满足Log Matching Property条件。</p>
+<p>根据Log Matching Property可得，若{index, term}已commit，前序所有entry都已commit。所以，对于每个server，<strong>只需记录一个lastApplied变量记录已apply的index，一个commitIndex变量记录已commit的index，一旦{index, term}被标为committed了，就可以更新commitIndex并直接将[lastApplied+1, index]范围内的所有entry都按顺序apply到state machine</strong>，然后通过AE将commitIndex同步给其它server，让他们完成相应的apply工作。</p>
+<h2 id="细节的处理"><a href="#细节的处理" class="headerlink" title="细节的处理"></a>细节的处理</h2><p>Lamport对于multi-paxos的描述缺少了许多细节的处理，包括leader crash的处理、membership的变化管理等等。Raft在这些方面都做了细致的说明。</p>
 <h2 id="读写操作"><a href="#读写操作" class="headerlink" title="读写操作"></a>读写操作</h2><h3 id="读操作优化"><a href="#读操作优化" class="headerlink" title="读操作优化"></a>读操作优化</h3><p>通过一轮新的paxos流程，并等待之前所有提议全部apply后才可返回需要的值（写操作的apply可能延迟到读才执行，有点像lazy execution）。</p>
 
       
@@ -450,7 +460,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Raft对multi-Paxos的简化"><span class="nav-number">1.</span> <span class="nav-text">Raft对multi-Paxos的简化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#不同的选值思路"><span class="nav-number">1.1.</span> <span class="nav-text">不同的选值思路</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读写操作"><span class="nav-number">2.</span> <span class="nav-text">读写操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#读操作优化"><span class="nav-number">2.1.</span> <span class="nav-text">读操作优化</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Raft对multi-Paxos的简化"><span class="nav-number">1.</span> <span class="nav-text">Raft对multi-Paxos的简化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#选值思路的简化"><span class="nav-number">1.1.</span> <span class="nav-text">选值思路的简化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#复制流程的简化"><span class="nav-number">1.2.</span> <span class="nav-text">复制流程的简化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#细节的处理"><span class="nav-number">2.</span> <span class="nav-text">细节的处理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读写操作"><span class="nav-number">3.</span> <span class="nav-text">读写操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#读操作优化"><span class="nav-number">3.1.</span> <span class="nav-text">读操作优化</span></a></li></ol></li></ol></div>
             
 
           </div>
