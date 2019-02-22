@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="摘要：总结了从single decree到leaderless multi-paxos的演进，并行化提交的可行性与限制，以及一些涉及实现的细节。 从single instance到multi instance如果把对一个值的共识确定过程称为一个paxos instance，那么一个基于paxos的replicated state machine实现，其log的每个index都对应一个paxos i">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-22T06:32:46.480Z">
+<meta property="og:updated_time" content="2019-02-22T06:34:53.992Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="聊聊Leaderless multi-Paxos">
 <meta name="twitter:description" content="摘要：总结了从single decree到leaderless multi-paxos的演进，并行化提交的可行性与限制，以及一些涉及实现的细节。 从single instance到multi instance如果把对一个值的共识确定过程称为一个paxos instance，那么一个基于paxos的replicated state machine实现，其log的每个index都对应一个paxos i">
@@ -330,7 +330,7 @@
 <blockquote>
 <ol>
 <li>如果接收者重启完成并在之前成功做了持久化，那么这轮paxos在预提议阶段学习到的值就一定是已经commit了的值，处理见第三种情况。</li>
-<li>如果预提议返回的都是noacceptedValue回复，这种情况可能是server failed，并只有少量或没有节点接受提议，预提议没收到任何acceptedValue，那么重新针对该log index发起新一轮paxos，并把value设为空（no-op）。</li>
+<li>如果预提议返回的都是noacceptedValue回复，这种情况可能是server failed，并只有少量或没有节点接受提议，预提议没收到任何acceptedValue，那么重新针对该log index发起新一轮paxos，并把value设为No-Op。</li>
 <li>如果只是少数集合接受了提议，那么新的一轮paxos中，预提议学习到的可能是个uncommitted值，由于学习到值并不能判断是否达成一致，所以第一第三种情况必须一视同仁，重新针对当前log index发起一轮paxos。</li>
 </ol>
 </blockquote>
