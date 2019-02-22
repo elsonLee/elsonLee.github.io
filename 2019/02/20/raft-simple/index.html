@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 选值思路的简化Raft的Term如同multi-pa">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-21T15:32:05.745Z">
+<meta property="og:updated_time" content="2019-02-22T09:03:06.395Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Raft简单在哪儿？">
 <meta name="twitter:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 选值思路的简化Raft的Term如同multi-pa">
@@ -312,6 +312,15 @@
 </blockquote>
 <p>因为每个term最多对应一个leader，每个leader在给定index上只会产生一个entry，同时Raft又引入<strong>Leader Append-Only原则</strong>，确保log不会被改写，因此条件1成立。对于条件2，Raft中的AppendEntries RPC相当于multi-paxos中的Accept消息，用来正式提议， 只要达成Quorum就可以commit。但为了保证条件2，Raft在AppendEntries上实现了<strong>前序一致性检查</strong>的逻辑，即受到AE后发现如果prevLogIndex对应entry的term不是prevLogTerm，则回复false，让leader递减prevLogIndex并重试，如果前序一致，则将AE携带的entry都append到本地log，使得各个log始终满足Log Matching Property条件。</p>
 <p>根据Log Matching Property可得，若{index, term}已commit，前序所有entry都已commit。所以，对于每个server，<strong>只需记录一个lastApplied变量记录已apply的index，一个commitIndex变量记录已commit的index，一旦{index, term}被标为committed了，就可以更新commitIndex并直接将[lastApplied+1, index]范围内的所有entry都按顺序apply到state machine</strong>，然后通过AE将commitIndex同步给其它server，让他们完成相应的apply工作。</p>
+<h3 id="数据不一致的处理方法改进"><a href="#数据不一致的处理方法改进" class="headerlink" title="数据不一致的处理方法改进"></a>数据不一致的处理方法改进</h3><p>前文讨论了multi-paxos中对于数据不一致情况的产生以及处理（<a href="https://elsonlee.github.io/2019/02/20/leader-paxos/#%E6%95%B0%E6%8D%AE%E4%B8%8D%E4%B8%80%E8%87%B4%E7%9A%84%E5%A4%84%E7%90%86" target="_blank" rel="noopener">leader-based multi-paxos数据不一致处理</a>）。raft和leader-based multi-paxos的情况很相似，在正常工作流中并不会出现leader数据不一致的情况（当前log index的前序entry都是committed）。但是在因为故障或其他原因导致的leader transfer后，新leader会有不一致的问题。paxos需要新leader像某多数集合请求最大log index，end index，然后从已commit的位置起，执行single decree，直到到达位置end index，才能开始处理client请求。<strong>multi-paxos的问题在于，新leader如果落后较多，需要做single decree的路径较长，会带来较大的延迟</strong>。<br>Raft从两方面对其进行了改进：</p>
+<blockquote>
+<ol>
+<li>“拉”（Pull）数据变“推”（Push）数据</li>
+<li>选举拥有最新log的server为leader</li>
+</ol>
+</blockquote>
+<p>要减少新leader因为落后太多导致的高延迟，一个可行的方案就是选择最新log的server为leader，这个逻辑被实现在RequestVote RPC的接受逻辑中，只要candidate的log比server本地的log旧，就拒绝。最新committed的log一定存在于多数集合中，那么任何少数集合在选举中一定无法赢得选举（如果某candidate的term很大，但log落后，发送出去的RequestVote会更新其它server的term，但并不会被log更新的server所接受），最终一定是多数集合中的某个server赢得选举（这里也隐含了<strong>Leader Completeness Property</strong>：如果某个entry的状态是committed，那么该entry一定存在于之后任何term更高的leader的log中）。</p>
+<p>另一方面，通过AE实现的“前序一致性检查”，在发送心跳或AE的时候“顺便”解决了follower上的数据不一致问题，化新leader的“拉”数据为当前leader“推”数据到其它server，保证各个server的Log Matching Property，这样当成为新leader时无需“拉”数据了。</p>
 <h2 id="细节的处理"><a href="#细节的处理" class="headerlink" title="细节的处理"></a>细节的处理</h2><p>Lamport对于multi-paxos的描述缺少了许多细节的处理，包括leader crash的处理、membership的变化管理等等。Raft在这些方面都做了细致的说明。</p>
 <h2 id="读写操作"><a href="#读写操作" class="headerlink" title="读写操作"></a>读写操作</h2><h3 id="读操作优化"><a href="#读操作优化" class="headerlink" title="读操作优化"></a>读操作优化</h3><p>通过一轮新的paxos流程，并等待之前所有提议全部apply后才可返回需要的值（写操作的apply可能延迟到读才执行，有点像lazy execution）。</p>
 
@@ -460,7 +469,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Raft对multi-Paxos的简化"><span class="nav-number">1.</span> <span class="nav-text">Raft对multi-Paxos的简化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#选值思路的简化"><span class="nav-number">1.1.</span> <span class="nav-text">选值思路的简化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#复制流程的简化"><span class="nav-number">1.2.</span> <span class="nav-text">复制流程的简化</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#细节的处理"><span class="nav-number">2.</span> <span class="nav-text">细节的处理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读写操作"><span class="nav-number">3.</span> <span class="nav-text">读写操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#读操作优化"><span class="nav-number">3.1.</span> <span class="nav-text">读操作优化</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#Raft对multi-Paxos的简化"><span class="nav-number">1.</span> <span class="nav-text">Raft对multi-Paxos的简化</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#选值思路的简化"><span class="nav-number">1.1.</span> <span class="nav-text">选值思路的简化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#复制流程的简化"><span class="nav-number">1.2.</span> <span class="nav-text">复制流程的简化</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#数据不一致的处理方法改进"><span class="nav-number">1.3.</span> <span class="nav-text">数据不一致的处理方法改进</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#细节的处理"><span class="nav-number">2.</span> <span class="nav-text">细节的处理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#读写操作"><span class="nav-number">3.</span> <span class="nav-text">读写操作</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#读操作优化"><span class="nav-number">3.1.</span> <span class="nav-text">读操作优化</span></a></li></ol></li></ol></div>
             
 
           </div>
