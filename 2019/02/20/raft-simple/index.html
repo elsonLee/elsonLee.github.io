@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 选值思路的简化Raft的Term如同multi-pa">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-22T09:03:06.395Z">
+<meta property="og:updated_time" content="2019-02-22T09:05:30.162Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Raft简单在哪儿？">
 <meta name="twitter:description" content="摘要：通过muti-paxos的角度来看raft，总结出raft在借鉴multi-paxos的同时于哪些方面进行了取舍，在带来的understandable的同时又失去了什么。 Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是leader-based，然而在multi-Paxos的基础上做了一些改变。 选值思路的简化Raft的Term如同multi-pa">
@@ -315,7 +315,7 @@
 <h3 id="数据不一致的处理方法改进"><a href="#数据不一致的处理方法改进" class="headerlink" title="数据不一致的处理方法改进"></a>数据不一致的处理方法改进</h3><p>前文讨论了multi-paxos中对于数据不一致情况的产生以及处理（<a href="https://elsonlee.github.io/2019/02/20/leader-paxos/#%E6%95%B0%E6%8D%AE%E4%B8%8D%E4%B8%80%E8%87%B4%E7%9A%84%E5%A4%84%E7%90%86" target="_blank" rel="noopener">leader-based multi-paxos数据不一致处理</a>）。raft和leader-based multi-paxos的情况很相似，在正常工作流中并不会出现leader数据不一致的情况（当前log index的前序entry都是committed）。但是在因为故障或其他原因导致的leader transfer后，新leader会有不一致的问题。paxos需要新leader像某多数集合请求最大log index，end index，然后从已commit的位置起，执行single decree，直到到达位置end index，才能开始处理client请求。<strong>multi-paxos的问题在于，新leader如果落后较多，需要做single decree的路径较长，会带来较大的延迟</strong>。<br>Raft从两方面对其进行了改进：</p>
 <blockquote>
 <ol>
-<li>“拉”（Pull）数据变“推”（Push）数据</li>
+<li>从“拉”（Pull）数据到“推”（Push）数据</li>
 <li>选举拥有最新log的server为leader</li>
 </ol>
 </blockquote>
