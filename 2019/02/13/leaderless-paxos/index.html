@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="摘要：总结了从single decree到leaderless multi-paxos的演进，并行化提交的可行性与限制，以及一些涉及实现的细节。 从single instance到multi instance如果把对一个值的共识确定过程称为一个paxos instance，那么一个基于paxos的replicated state machine实现，其log的每个index都对应一个paxos i">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-22T06:13:44.990Z">
+<meta property="og:updated_time" content="2019-02-22T06:32:46.480Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="聊聊Leaderless multi-Paxos">
 <meta name="twitter:description" content="摘要：总结了从single decree到leaderless multi-paxos的演进，并行化提交的可行性与限制，以及一些涉及实现的细节。 从single instance到multi instance如果把对一个值的共识确定过程称为一个paxos instance，那么一个基于paxos的replicated state machine实现，其log的每个index都对应一个paxos i">
@@ -314,35 +314,23 @@
 <blockquote>
 <ol>
 <li>没有收到某个log index的提议，然而其实已经达成Quorum，留下“空洞”。</li>
-</ol>
-</blockquote>
-<blockquote>
-<ol start="2">
 <li>paxos instance存在少数集合达成一致的情况，之后又在不同的值上（多数/少数）集合达成一致（两集合没有交集）。</li>
 </ol>
 </blockquote>
-<p>对于basic-paxos来说，只有提议者知道值有没有被真正选中。所以在leaderless方案中，通常需要进行一轮single decree用来确认、处理数据不一致的情况，如果已经被选中，则从某多数集合中将数据“拉”（Pull）过来。</p>
+<p>对于basic-paxos来说，只有提议者知道值有没有被真正选中。所以在leaderless方案中，通常需要进行一轮single decree用来确认、处理数据不一致的情况，如果已经被选中，则从某多数集合中将数据“拉”（Pull）过来（如果回复都是noacceptedValue，就提交No-Op，见下文）。</p>
 <h3 id="正式提议与client的处理逻辑"><a href="#正式提议与client的处理逻辑" class="headerlink" title="正式提议与client的处理逻辑"></a>正式提议与client的处理逻辑</h3><p>接收者在收到正式提议后根据single paxos的要求处理并给提议者回复（包括拒绝的情况），这里有三种情况：</p>
 <blockquote>
 <ol>
-<li>如果提议者收到多数集合接受提议，让client回复success</li>
-<li>如果提议者收到多数集合拒绝提议，提议者重新选择log index，发起新一轮paxos，或者让client回复fail</li>
-<li>如果提议者收到部分回复（ie. 接收者可能crash），无法判断该指令是否被commit了，让client回复unknown</li>
+<li>如果提议者收到多数集合接受提议，让client回复success。</li>
+<li>如果提议者收到多数集合拒绝提议，提议者重新选择log index，发起新一轮paxos，或者让client回复fail。</li>
+<li>如果提议者收到部分回复（ie. 接收者可能crash），无法判断该指令是否被commit了，让client回复unknown。</li>
 </ol>
 </blockquote>
 <h3 id="Unknown的处理与No-Op"><a href="#Unknown的处理与No-Op" class="headerlink" title="Unknown的处理与No-Op"></a>Unknown的处理与No-Op</h3><p>Unknown的情况可能是某接收者在提议者发起正式提议时crash了，可能在crash之前已经做了持久化，也可能没做持久化，因此是否commit情况未知。这种情况下，client可以对该log index发起一轮新的paxos，也分三种情况：</p>
 <blockquote>
 <ol>
 <li>如果接收者重启完成并在之前成功做了持久化，那么这轮paxos在预提议阶段学习到的值就一定是已经commit了的值，处理见第三种情况。</li>
-</ol>
-</blockquote>
-<blockquote>
-<ol start="2">
 <li>如果预提议返回的都是noacceptedValue回复，这种情况可能是server failed，并只有少量或没有节点接受提议，预提议没收到任何acceptedValue，那么重新针对该log index发起新一轮paxos，并把value设为空（no-op）。</li>
-</ol>
-</blockquote>
-<blockquote>
-<ol start="3">
 <li>如果只是少数集合接受了提议，那么新的一轮paxos中，预提议学习到的可能是个uncommitted值，由于学习到值并不能判断是否达成一致，所以第一第三种情况必须一视同仁，重新针对当前log index发起一轮paxos。</li>
 </ol>
 </blockquote>
