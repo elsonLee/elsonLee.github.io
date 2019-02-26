@@ -1013,7 +1013,7 @@ Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是le
         
           <h1 class="post-title" itemprop="name headline">
                 
-                <a class="post-title-link" href="/2019/01/03/lamport-logical-clock/" itemprop="url">lamport logical clock</a></h1>
+                <a class="post-title-link" href="/2019/01/03/lamport-logical-clock/" itemprop="url">对Lamport Logical Clock的理解</a></h1>
         
 
         <div class="post-meta">
@@ -1065,7 +1065,8 @@ Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是le
       
         
           
-          对Lamport Logical Clock的理解不合理的事件发生顺序通常人们习惯使用物理时间来描述多个事件发生的前后关系，比如，event A发生的时间早于event B发生的时间，那么可以得出结论A happened before B，这似乎是一个简单得不值得探讨的问题。然而，对于生活中的大多数
+          摘要：Lamport logical timestamp提供了一种causality compliant的全序关系，以维护系统内事件之间的internal causality关系。
+不合理的事件发生顺序通常人们习惯使用物理时间来描述多个事件发生的前后关系，比如，event A发生的时间早于event
           ...
           <!--noindex-->
           <div class="post-button text-center">
