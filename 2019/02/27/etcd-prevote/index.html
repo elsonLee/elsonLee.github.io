@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="Hexo, NexT">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="摘要：Raft利用Pre-Vote解决了server rejoin过程时造成的重新选举问题，本文探究了该算法在Etcd中是如何实现的。 利用Pre-Vote优化Leader ElectionDiego Ongaro在其博士论文”Consensus: Bridging Theory And Practice”中描述了以下规则：  server收到term &amp;gt; currentTerm时，设置cu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Pre-Vote在Etcd中的实现">
+<meta property="og:url" content="http://yoursite.com/2019/02/27/etcd-prevote/index.html">
+<meta property="og:site_name" content="Lexun&#39;s Notes">
+<meta property="og:description" content="摘要：Raft利用Pre-Vote解决了server rejoin过程时造成的重新选举问题，本文探究了该算法在Etcd中是如何实现的。 利用Pre-Vote优化Leader ElectionDiego Ongaro在其博士论文”Consensus: Bridging Theory And Practice”中描述了以下规则：  server收到term &amp;gt; currentTerm时，设置cu">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:updated_time" content="2019-02-27T13:44:15.891Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Pre-Vote在Etcd中的实现">
+<meta name="twitter:description" content="摘要：Raft利用Pre-Vote解决了server rejoin过程时造成的重新选举问题，本文探究了该算法在Etcd中是如何实现的。 利用Pre-Vote优化Leader ElectionDiego Ongaro在其博士论文”Consensus: Bridging Theory And Practice”中描述了以下规则：  server收到term &amp;gt; currentTerm时，设置cu">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2019/02/27/etcd-prevote/">
+
+
+
+
+
+  <title>Pre-Vote在Etcd中的实现 | Lexun's Notes</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Lexun's Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2019/02/27/etcd-prevote/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Lexun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Lexun's Notes">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">Pre-Vote在Etcd中的实现</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2019-02-27T21:40:51+08:00">
+                2019-02-27
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>摘要：Raft利用Pre-Vote解决了server rejoin过程时造成的重新选举问题，本文探究了该算法在Etcd中是如何实现的。</p>
+<h3 id="利用Pre-Vote优化Leader-Election"><a href="#利用Pre-Vote优化Leader-Election" class="headerlink" title="利用Pre-Vote优化Leader Election"></a>利用Pre-Vote优化Leader Election</h3><p>Diego Ongaro在其博士论文”Consensus: Bridging Theory And Practice”中描述了以下规则：</p>
+<blockquote>
+<p>server收到term &gt; currentTerm时，设置currentTerm = term并转为follower。</p>
+</blockquote>
+<p>当系统曾出现分区，并在分区消失后，某个被split的follower的Term数值很大（每次electionTimeout后成为Candidate都会递增Term），该规则能够令其他server更新自己的Term并引发重新选举，从而携带更大的Term以“接受”这个follower的加入（<strong>如果其余server不更新term，这个被split的follower由于Term太大拒绝所有消息，也许永远不能被成功加入系统</strong>）。然而，被split的follower很大概率在log上是落后的，那么在重新选举后一定不会成为leader，由此引入的重新选举反而导致临时的延迟与可用性问题。</p>
+<p>解决方式是在Vote阶段前增加一个尝试阶段：<strong>pre-Vote阶段</strong>，<strong>当candidate在一个electionTimeout后还没有收到heartbeat，就尝试发送preVote请求（请求中模拟下一次递增过的Term，但本身的Term并不递增），如果有多数集合愿意接受请求（不改变状态，只看Term &gt; currentTerm且candidate的log是不是update-to-date），说明当前server可竞争leader，这才递增Term并正式参与选举</strong>。对于重新加入、并且log落后的server来说，preVote请求得不到多数回复，其Term并不会增加，当前leader也不会因为他的重新加入带来不必要的重新选举，其自身在收到heartbeat后能够加入系统并catch up leader。</p>
+<h3 id="Pre-Vote实现"><a href="#Pre-Vote实现" class="headerlink" title="Pre-Vote实现"></a>Pre-Vote实现</h3><p>Etcd将Candidate的状态分为两种：</p>
+<blockquote>
+<ol>
+<li>PreCandidate</li>
+<li>Candidate</li>
+</ol>
+</blockquote>
+<p>两者的区别在于PreCandidate<br><code>raft.Step()</code>既处理请求消息，也处理回复消息，是整个raft状态机的一个主要入口。Step实现了Rules for All Servers的逻辑，并根据raft状态路由到<code>stepLeader()/stepFollower()/stepCandidate()</code>。来看<code>raft.Step()</code>对于PreVote的处理<br><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r *raft)</span> <span class="title">Step</span><span class="params">(m pb.Message)</span> <span class="title">error</span></span> &#123;</span><br><span class="line">  <span class="comment">// 修改term和status状态</span></span><br><span class="line">  <span class="keyword">switch</span> &#123;  </span><br><span class="line">	 <span class="keyword">case</span> m.Term == <span class="number">0</span>:  </span><br><span class="line">      <span class="comment">// local message</span></span><br><span class="line">     <span class="keyword">case</span> m.Term &gt; r.Term:</span><br><span class="line">	     ...</span><br><span class="line">	     <span class="keyword">switch</span> &#123;  </span><br><span class="line">			 <span class="keyword">case</span> m.Type == pb.MsgPreVote:  <span class="comment">// preVote请求不需要改状态</span></span><br><span class="line">			 <span class="keyword">case</span> m.Type == pb.MsgPreVoteResp &amp;&amp; !m.Reject:  <span class="comment">// preVote接受回复，在后面判断，如果回复达成Quorum，就可以增加term，正式提出Vote请求</span></span><br><span class="line">			 <span class="keyword">default</span>:</span><br><span class="line">				 <span class="comment">// 根据$3.3 转为follower</span></span><br><span class="line">				 <span class="keyword">if</span> m.Type == pb.MsgApp || m.Type == pb.MsgHeartbeat || m.Type == pb.MsgSnap &#123;  </span><br><span class="line">				     r.becomeFollower(m.Term, m.From)  </span><br><span class="line">			     &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">				     r.becomeFollower(m.Term, None)  </span><br><span class="line">			     &#125;  </span><br><span class="line">		 &#125;</span><br><span class="line">	 <span class="keyword">case</span> m.Term &lt; r.Term:</span><br><span class="line">		 <span class="keyword">if</span> (r.checkQuorum || r.preVote) &amp;&amp; (m.Type == pb.MsgHeartbeat || m.Type == pb.MsgApp) &#123;</span><br><span class="line">			 ...</span><br><span class="line">		 &#125; <span class="keyword">else</span> <span class="keyword">if</span> m.Type == pb.MsgPreVote &#123;</span><br><span class="line">			 <span class="comment">// 根据pre-Vote算法，收到term更小的preVote，直接拒绝</span></span><br><span class="line">			 r.send(pb.Message&#123;To: m.From, Term: r.Term, Type: pb.MsgPreVoteResp, Reject: <span class="literal">true</span>&#125;) </span><br><span class="line">		 &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			 <span class="comment">// ignore</span></span><br><span class="line">		 &#125;</span><br><span class="line">	     <span class="keyword">return</span> <span class="literal">nil</span>	 <span class="comment">// term &lt; currentTerm，要么忽略要么拒绝，处理完就退出</span></span><br><span class="line">   &#125;  </span><br><span class="line">  </span><br><span class="line">   <span class="keyword">switch</span> m.Type &#123;  </span><br><span class="line">   <span class="keyword">case</span> pb.MsgHup:</span><br><span class="line">	   ...</span><br><span class="line">   <span class="keyword">case</span> pb.MsgVote, pb.MsgPreVote:</span><br><span class="line">	   <span class="keyword">if</span> r.isLearner &#123; <span class="keyword">return</span> <span class="literal">nil</span> &#125;	<span class="comment">// learner不参与选举</span></span><br><span class="line">	   <span class="comment">// canVote把Vote和preVote的条件放在了一起，但还不包括update-to-date检验</span></span><br><span class="line">	   canVote := r.Vote == m.From || (r.Vote == None &amp;&amp; r.lead == None) ||  <span class="comment">// $3.4，对RequestVote的要求</span></span><br><span class="line">						    (m.Type == pb.MsgPreVote &amp;&amp; m.Term &gt; r.Term)	 <span class="comment">// term大的preVote才能grant</span></span><br><span class="line">	   <span class="comment">// update to date检验，通过才能grant</span></span><br><span class="line">	   <span class="keyword">if</span> canVote &amp;&amp; r.raftLog.isUpToDate(m.Index, m.LogTerm) &#123;</span><br><span class="line">		   r.send(pb.Message&#123;To: m.From, Term: m.Term, Type: voteRespMsgType(m.Type)&#125;)	<span class="comment">// grant</span></span><br><span class="line">		   <span class="comment">// Vote请求成功要更新</span></span><br><span class="line">		   <span class="keyword">if</span> m.Type == pb.MsgVote &#123;  </span><br><span class="line">			   r.electionElapsed = <span class="number">0</span></span><br><span class="line">			   r.Vote = m.From</span><br><span class="line">		   &#125;   </span><br><span class="line">	   &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		  r.send(pb.Message&#123;To: m.From, Term: r.Term, Type: voteRespMsgType(m.Type), Reject: <span class="literal">true</span>&#125;) </span><br><span class="line">	   &#125;</span><br><span class="line">   <span class="keyword">default</span>: <span class="comment">// MsgPreVoteResp会走这里 </span></span><br><span class="line">	   err := r.step(r, m)  </span><br><span class="line">	   <span class="keyword">if</span> err != <span class="literal">nil</span> &#123;  </span><br><span class="line">		   <span class="keyword">return</span> err</span><br><span class="line">	   &#125;</span><br><span class="line">   &#125;  </span><br><span class="line">   <span class="keyword">return</span> <span class="literal">nil</span>  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>投票过程<code>campaign</code>实现了向所有peers发送<code>preVote</code>或<code>Vote</code>请求的逻辑，注意投票类型决定了当前Candidate的类型是PreCandidate还是Candidate，前者会发送<code>preVote</code>后者发送<code>Vote</code>,。<br><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// campaign包含了preVote和Vote，根据t的类型选择  </span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="params">(r *raft)</span> <span class="title">campaign</span><span class="params">(t CampaignType)</span></span> &#123;  </span><br><span class="line">   <span class="keyword">var</span> term <span class="keyword">uint64</span>  </span><br><span class="line">   <span class="keyword">var</span> voteMsg pb.MessageType  </span><br><span class="line">   <span class="keyword">if</span> t == campaignPreElection &#123;  </span><br><span class="line">      r.becomePreCandidate()    <span class="comment">// 不会递增term  </span></span><br><span class="line">	  voteMsg = pb.MsgPreVote  </span><br><span class="line">	  term = r.Term + <span class="number">1</span> 		<span class="comment">// 请求的时候需要模拟递增过的term  </span></span><br><span class="line">  &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">      r.becomeCandidate()       <span class="comment">// 已经递增了term  </span></span><br><span class="line">	  voteMsg = pb.MsgVote  </span><br><span class="line">      term = r.Term  </span><br><span class="line">  &#125;  </span><br><span class="line">  <span class="comment">// 自己给自己投票，r.votes[r.id] = v，并统计r.votes中为true的个数，如果满足多数，说明是single-node cluster，可以直接返回  </span></span><br><span class="line">  <span class="keyword">if</span> r.quorum() == r.poll(r.id, voteRespMsgType(voteMsg), <span class="literal">true</span>) &#123;  </span><br><span class="line">	 <span class="keyword">if</span> t == campaignPreElection &#123;  </span><br><span class="line">         r.campaign(campaignElection)   <span class="comment">// 如果preVote成功，进行Vote  </span></span><br><span class="line">	 &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">         r.becomeLeader()            	<span class="comment">// Vote成功，转为leader  </span></span><br><span class="line">	 &#125;  </span><br><span class="line">     <span class="keyword">return</span>  </span><br><span class="line">  &#125;  </span><br><span class="line">  <span class="comment">// 非single-node cluster，给所有的peer发送(pre)Vote  </span></span><br><span class="line">  <span class="keyword">for</span> id := <span class="keyword">range</span> r.prs &#123;  </span><br><span class="line">      <span class="keyword">if</span> id == r.id &#123;  </span><br><span class="line">         <span class="keyword">continue</span>		<span class="comment">// 排除自身</span></span><br><span class="line">	  &#125;  </span><br><span class="line">      ...</span><br><span class="line">      r.send(pb.Message&#123;Term: term, To: id, Type: voteMsg, Index: r.raftLog.lastIndex(), LogTerm: r.raftLog.lastTerm(), Context: ctx&#125;)  </span><br><span class="line">   &#125;  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>stepLeader和stepFollower都不会处理MsgPreVoteResp，只有stepCandidate会处理<br><figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// candidate有两种状态，普通的Candidate和preCandidate，区别在于前者响应Vote，后者响应preVote </span></span><br><span class="line"><span class="comment">// invariant: m.Term &gt; r.Term</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">stepCandidate</span><span class="params">(r *raft, m pb.Message)</span> <span class="title">error</span></span> &#123;  </span><br><span class="line">   <span class="comment">// 根据状态决定Vote的响应类型  </span></span><br><span class="line">   <span class="keyword">var</span> myVoteRespType pb.MessageType  </span><br><span class="line">   <span class="keyword">if</span> r.state == StatePreCandidate &#123;  </span><br><span class="line">      myVoteRespType = pb.MsgPreVoteResp  </span><br><span class="line">   &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">      myVoteRespType = pb.MsgVoteResp  </span><br><span class="line">   &#125;  </span><br><span class="line">   <span class="keyword">switch</span> m.Type &#123;  </span><br><span class="line">   <span class="keyword">case</span> pb.MsgProp:  </span><br><span class="line">      ...</span><br><span class="line">   <span class="keyword">case</span> pb.MsgApp:  </span><br><span class="line">      ... </span><br><span class="line">   <span class="keyword">case</span> pb.MsgHeartbeat:  </span><br><span class="line">      ...</span><br><span class="line">   <span class="keyword">case</span> pb.MsgSnap:  </span><br><span class="line">      ...</span><br><span class="line">   <span class="keyword">case</span> myVoteRespType:  </span><br><span class="line">      <span class="comment">// m.From加入r.votes，并统计目前接受到的vote个数  </span></span><br><span class="line">	  gr := r.poll(m.From, m.Type, !m.Reject)  </span><br><span class="line">      <span class="keyword">switch</span> r.quorum() &#123;  </span><br><span class="line">      <span class="keyword">case</span> gr: <span class="comment">// 达成Quorum  </span></span><br><span class="line">		  <span class="comment">// 如果是preVote granted，就进行Vote流程  </span></span><br><span class="line">		  <span class="keyword">if</span> r.state == StatePreCandidate &#123;  </span><br><span class="line">	          r.campaign(campaignElection)  </span><br><span class="line">	      &#125; <span class="keyword">else</span> &#123;  </span><br><span class="line">	          <span class="comment">// Vote granted，转为leader  </span></span><br><span class="line">			  r.becomeLeader()  </span><br><span class="line">	          r.bcastAppend()  </span><br><span class="line">         &#125;  </span><br><span class="line">      <span class="keyword">case</span> <span class="built_in">len</span>(r.votes) - gr:   <span class="comment">// 收到多数拒绝，直接转follower  </span></span><br><span class="line">	      r.becomeFollower(r.Term, None)  <span class="comment">// Term不变，根据后面Candidate的状态会递增Term</span></span><br><span class="line">      &#125;  </span><br><span class="line">   <span class="keyword">case</span> pb.MsgTimeoutNow:  </span><br><span class="line">      ...</span><br><span class="line">   &#125;  </span><br><span class="line">   <span class="keyword">return</span> <span class="literal">nil</span>  </span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p>
+<p>参考资料：<br>[1] Diego Ongaro. 2014. Consensus: Bridging Theory And Practice.<br>[2] Etcd source code.</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2019/02/20/raft-simple/" rel="next" title="Raft简单在哪儿？">
+                <i class="fa fa-chevron-left"></i> Raft简单在哪儿？
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Lexun</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">8</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#利用Pre-Vote优化Leader-Election"><span class="nav-number">1.</span> <span class="nav-text">利用Pre-Vote优化Leader Election</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Pre-Vote实现"><span class="nav-number">2.</span> <span class="nav-text">Pre-Vote实现</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2019</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lexun</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>
