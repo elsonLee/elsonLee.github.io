@@ -86,7 +86,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="摘要：通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是在提议之间建立了某种happens-before关系，以保证在异步环境下能够满足共识值的唯一性。 回顾Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2019-02-14T13:37:44.599Z">
+<meta property="og:updated_time" content="2019-03-03T08:16:08.941Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Basic Paxos的唯一性保证">
 <meta name="twitter:description" content="摘要：通过对Basic Paxos的重新审视，发现Lamport在算法中对预提议（prepare请求）和提议（accept请求）所作出的一系列要求实质是在提议之间建立了某种happens-before关系，以保证在异步环境下能够满足共识值的唯一性。 回顾Paxos需要满足的条件安全性条件（safety）：  只能选择被提议（propose）的值 只有一个值会被选中（不存在某个时刻某个值被选中后，另">
@@ -332,12 +332,16 @@
 <p>提议{m, v1}被选中，必定存在大多数集合C1接受提议m，提议n（n &gt; m）被发起，根据R4，必定存在大多数集合C2接受了预提议n，C1和C2必有交集，且交集中的接收者事件顺序一定满足：<strong>{提议m被接受} $\rightarrow$ {预提议n被接受}</strong>（否则提议m达不到Quorum），所以预提议n学习到的值一定是m..n-1范围内的某个提议值，如果n = m+1，那么提议n的值一定是v1。另外，对任意被发起的提议m和n（n &gt; m），一定满足：存在某个多数集合，其中<strong>{预提议m被接受} $\rightarrow$ {预提议n被接受}</strong>（否则预提议m达不到Quorum不会被发起）。根据两个happens-before关系，归纳可得：预提议n学习到的值一定是v1，条件2满足。</p>
 <h2 id="Paxos流程"><a href="#Paxos流程" class="headerlink" title="Paxos流程"></a>Paxos流程</h2><p>将R1至R5整理，得到Paxos流程：<br>Phase 1.</p>
 <blockquote>
-<p>(a) 提议者发送预提议{n}给某个大多数接收者集合 [R5]<br>(b) 接收者记录接受过的最大预提议ID，收到更大ID的预提议后，回复保证不再接受ID &lt; n的提议，并携带接受过的最大ID的提议值 [R2, R4, R5]</p>
+<p>(a) 提议者发送预提议{n}给某个大多数接收者集合 [R5]<br>(b) 接收者总是记录接受过的最大ID的预提议{max_ID}。当收到n $\geq$ max_ID预提议后，回复并保证不再接受ID &lt; n的提议，回复携带接受过的最大ID的提议值v [R2, R4, R5]</p>
 </blockquote>
 <p>Phase 2.</p>
 <blockquote>
 <p>(a) 如果提议者收到来自大多数接收者的预提议回复，那么他将正式向那些接收者发起提议{n, v}，v是所有回复中ID最大的提议值，如果没有值，则v是任意值 [R3, R4]<br>(b) 如果接收者收到提议n，只要之前没接受过ID &gt; n的预提议，就接受提议n [R1, R2, R4]</p>
 </blockquote>
+<h2 id="Paxos实现"><a href="#Paxos实现" class="headerlink" title="Paxos实现"></a>Paxos实现</h2><p>在server上持久化<code>minProposal</code>（允许的最小提议ID）、<code>acceptedProposal</code>（最近接受的提议ID）、<code>acceptedValue</code>（最近接受的提议值）、<code>maxRound</code>（）<br><strong>Phase 1. Prepare &amp; Promise</strong><br>提议者：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">for pr in peers:</span><br><span class="line">	send(pr, PREPARE(n))</span><br></pre></td></tr></table></figure></p>
+<p>接收者：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">if prepareMsg.ID &gt;= minProposal:</span><br><span class="line">	minProposal := prepareMsg.ID</span><br><span class="line">	send(prepareMsg.From, PROMISE(acceptedProposal, acceptedValue))</span><br><span class="line">else:</span><br><span class="line">	send(prepareMsg.From, FAIL)</span><br></pre></td></tr></table></figure></p>
+<p><strong>Phase 2. Propose &amp; Accept</strong><br>提议者：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">if grantedInQuorum(prepareReplys) == true:</span><br><span class="line">	v := valueForMaxID(prepareReplys) </span><br><span class="line">	for pr in peers:</span><br><span class="line">		send(pr, PROPOSE(n, v)</span><br></pre></td></tr></table></figure></p>
+<p>接收者：<br><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">if proposeMsg.ID &gt;= minProposal:</span><br><span class="line">	acceptedProposal := proposeMsg.ID</span><br><span class="line">	acceptedValue := proposeMsg.value</span><br><span class="line">	minProposal := proposeMsg.ID</span><br></pre></td></tr></table></figure></p>
 <h2 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h2><p>R4是整个算法的关键，建立了以下2个关系：<br>对于任意提议m和提议n（m &lt; n），一旦两个提议都发起，就必定满足：</p>
 <blockquote>
 <ol>
@@ -351,7 +355,7 @@
 </ol>
 </blockquote>
 <p> 关系1和2加上Quorum条件，可以确定（见上面条件2的证明），如果提议{m, v}被选中，那么预提议n学习到的值一定是v（提议n的值是v），这是确保唯一性的根本原因。</p>
-<h2 id="其它说明"><a href="#其它说明" class="headerlink" title="其它说明"></a>其它说明</h2><h3 id="对提议ID的要求"><a href="#对提议ID的要求" class="headerlink" title="对提议ID的要求"></a>对提议ID的要求</h3><p>必须<strong>保证提议ID的全局唯一</strong>，假设提议{m, v1}被部分接受，提议{m, v2}也被部分接受，两个提议都未被选中，那么新一轮预提议返回有可能会出现同一个最高ID具有两种不同的值，无法决策在正式提议阶段携带哪个值。</p>
+<h2 id="其它说明"><a href="#其它说明" class="headerlink" title="其它说明"></a>其它说明</h2><h3 id="对提议ID的要求"><a href="#对提议ID的要求" class="headerlink" title="对提议ID的要求"></a>对提议ID的要求</h3><p>必须<strong>保证提议ID的全局唯一</strong>，由于Phase 1(b)并不拒绝等于max_ID的预提议，所以存在可能提议{m, v1}被部分接受，提议{m, v2}也被部分接受，两个提议都未被选中，那么新一轮预提议返回有可能会出现同一个最高ID具有两种不同的值，无法决策在正式提议阶段携带哪个值。</p>
 <p>除了全局唯一外，对于提议ID的生成并没有要求的，任何提议者可以使用随机的ID，只是由于接收者只能接受比已经收到过的预提议ID更大的提议，因此，随机ID会严重影响提议被拒绝的概率，对于同一个提议者来说，保证提议ID单调增是合理的。进一步，保证各个提议者的ID是全局单调递增的能减少各提议者成功率不均匀的情况，这就可以使用Lamport Clock的方式，由于提议者本身也是接收者，提议者的提议ID可以设为max{local_max_id, highest_recv_id} + 1（不过这个方法并不能满足提议ID相同的要求）。</p>
 <h3 id="预提议结果无法判断是否达成共识的问题"><a href="#预提议结果无法判断是否达成共识的问题" class="headerlink" title="预提议结果无法判断是否达成共识的问题"></a>预提议结果无法判断是否达成共识的问题</h3><p>在某个提议已经被选中的前提下，之后的预提议必定能学习到被选中的值。然而，存在多个提议（不同ID）被不同的少数接受者接受的情况，这时，预提议会学习到<strong>某大多数集合中ID最大的提议值</strong>，即<strong>通过预提议学习到非空值，提议者无法判断之前是否达成共识</strong>，这个可能会在某些场景下引入新的问题。</p>
 <p>参考资料：<br>[1] Lamport, L. 2001. Paxos made simple.</p>
@@ -505,7 +509,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#回顾Paxos需要满足的条件"><span class="nav-number">1.</span> <span class="nav-text">回顾Paxos需要满足的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）"><span class="nav-number">2.</span> <span class="nav-text">如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos流程"><span class="nav-number">3.</span> <span class="nav-text">Paxos流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">4.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其它说明"><span class="nav-number">5.</span> <span class="nav-text">其它说明</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#对提议ID的要求"><span class="nav-number">5.1.</span> <span class="nav-text">对提议ID的要求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#预提议结果无法判断是否达成共识的问题"><span class="nav-number">5.2.</span> <span class="nav-text">预提议结果无法判断是否达成共识的问题</span></a></li></ol></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#回顾Paxos需要满足的条件"><span class="nav-number">1.</span> <span class="nav-text">回顾Paxos需要满足的条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）"><span class="nav-number">2.</span> <span class="nav-text">如何保证满足唯一性（以下推导和Lamport原文略有不同，但使用到的推论几乎相同）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos流程"><span class="nav-number">3.</span> <span class="nav-text">Paxos流程</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Paxos实现"><span class="nav-number">4.</span> <span class="nav-text">Paxos实现</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#总结"><span class="nav-number">5.</span> <span class="nav-text">总结</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#其它说明"><span class="nav-number">6.</span> <span class="nav-text">其它说明</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#对提议ID的要求"><span class="nav-number">6.1.</span> <span class="nav-text">对提议ID的要求</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#预提议结果无法判断是否达成共识的问题"><span class="nav-number">6.2.</span> <span class="nav-text">预提议结果无法判断是否达成共识的问题</span></a></li></ol></li></ol></div>
             
 
           </div>
