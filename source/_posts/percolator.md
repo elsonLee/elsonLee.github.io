@@ -9,7 +9,7 @@ tags:
 
 
 
-### 背景
+## 背景
 
 ​	Google 搜索引擎的网页索引一直是由 MapReduce 进行批处理建立的，但是 MapReduce 对于索引的增量更新来说处理代价很大，必须针对整个数据仓库重新处理。因此提出了 Percolator 项目，为了提供一种增量处理少量索引更新的能力。
 
@@ -17,7 +17,7 @@ tags:
 
 
 
-### 条件和约束
+## 条件和约束
 
 - 支持跨行、跨表的事务，提供 SI 隔离级别的 ACID 语义
 
@@ -26,7 +26,7 @@ tags:
 
 
 
-### 技术点
+## 技术点
 
 - 在 Bigtable API 上非 “侵入式” 地实现
 
@@ -38,9 +38,9 @@ tags:
 
   
 
-### 关键问题
+## 关键问题
 
-##### 如何记录分布式事务状态？
+### 如何记录分布式事务状态？
 
 ​	分布式事务状态的记录是实现整个分布式事务 `原子提交` 语义的关键，正因为如此，一个分布式事务的状态一定是一个单点记录，且需要持久化。通常有几种方式实现：
 
@@ -56,15 +56,15 @@ tags:
 
 Percolator 选择的是方法3，因为 coordinator 的角色实际是由 client 担当，coordinator 并不固定。
 
-##### 如何实现无全局死锁检测？
+### 如何实现无全局死锁检测？
 
 Percolator 使用了 No-Wait + 抢占式 abort 的方式处理，类似地，如果使用  Wound-Wait 或 Wait-Die 的方式也无需全局死锁检测（[详见 “避免全局死锁检测”](#避免全局死锁检测)）。
 
 
 
-### 系统设计分析
+## 系统设计分析
 
-#### 非侵入式实现
+### 非侵入式实现
 
 ​	事务管理器需要管理 tuple 的状态信息，比如当前增删改的 tuple 是否已经提交、是否处于被锁状态等。这些信息通常被记录在 tuple 的数据结构中，不被用户所见，要实现不修改 Bigtable 中 tuple 的数据结构，非侵入式地记录这些信息，最容易想到的方法就是通过在表上新增加专门的列来记录这些信息，Percolator 正是这么做的。
 
@@ -76,7 +76,7 @@ Percolator 使用了 No-Wait + 抢占式 abort 的方式处理，类似地，如
 
 ​	两列特殊列 `c:lock`、`c:write` 分别用于在事务中实现 tuple 锁以及“缓存” tuple 状态。
 
-##### 为什么需要  c:write ？
+#### 为什么需要  c:write ？
 
 ​	理论上来讲，Bigtable 中的 tuple 是多版本的，后续读事务访问 tuple 的某个版本时，即便没有 c:write 也可以通过 primary 节点查询到对应事务的状态，确认事务提交后证明该版本的 tuple 可见。但是如果每个读事务在访问每个 tuple 时都要通过 primary 节点查询事务状态，对性能会有极大的影响。因此 c:write 在这里实际起到了“缓存”事务状态的作用（虽然称为“缓存”，但是持久化的），即如果 c:write 存在，表示这个版本的 tuple 已经提交了，如果不存在，则需要进一步向 primary 确认。
 
@@ -90,7 +90,7 @@ Percolator 使用了 No-Wait + 抢占式 abort 的方式处理，类似地，如
 
 
 
-#### Snapshot 时间戳分配的考量
+### Snapshot 时间戳分配的考量
 
 ​	无论是只读事务还是读写事务，snapshot 时间戳都通过从中心化节点 oracle 处申请得到，记为 `read_ts_`。
 
@@ -126,9 +126,9 @@ class Transaction {
 
 
 
-#### 事务执行
+### 事务执行
 
-##### 主动 abort 不确定的事务
+#### 主动 abort 不确定的事务
 
 ​	当事务拿到 read\_ts\_ 后，开始事务执行流程，读操作向存储数据的各个 participant 以 read\_ts\_ 时间戳读取数据（快照读），不同的是，写操作只是修改本地缓冲区中的值（OCC，延迟到 prepare）。
 
@@ -186,17 +186,17 @@ void Transaction::Set(Write w) {
 }
 ```
 
-##### 被动等待不确定的事务
+#### 被动等待不确定的事务
 
 ​	对于 c:lock 未清除的情况，pgxc 的处理方法是等待 tuple，直到 tuple 上的锁被清理，不管事务最终是 commit 还是 abort，都会有 gs_clean 服务周期性地查询每个 participant 上 prepared 但未 commit 的事务，然后帮忙去 coordinator 查询事务状态并通过 coordinator 重新向对应的 participant 发送 commit 或 abort 消息。之所以 pgxc 可以使用这样的方法是因为有固定的多个 coordinator，并且事务状态也是记录在 coordinator 上的，
 
 
 
-#### 事务 prepare
+### 事务 prepare
 
 ​	由于采用了 OCC 的并发控制算法，对 tuple 的加锁以及数据的更新工作被推迟到了 2PC 的 prepare 阶段。prepare 的作用是为了对所有涉及写的 tuple 加锁，并更新数据，只有确认所有 tuple 都成功加锁后才能进行 commit，因为需要保证数据被本事务修改到 commit point 之间不能被其它事务又修改了。
 
-##### 加锁顺序
+#### 加锁顺序
 
 ​	从事务执行的逻辑来看，当发现 tuple c:lock 没有被清理时，需要向 primary 查询事务状态，primary 总是在加锁过程中被写入 c:lock，所以无论加锁的顺序如何，都能保证这个执行流的正确执行。
 
@@ -204,7 +204,7 @@ void Transaction::Set(Write w) {
 
 ​	实际上对加锁顺序做一个小小地调整就可以做到。事务的提交点保证了 primary 上 tuple c:lock 已经被清除，那么如果向 primary 查询事务状态时发现 tuple 的 c:lock 不存在，是否可以认为事务已提交？ 这需要保证除了提交点之后的任何时候，任意 secondaries 的 c:lock 加锁后，也必须能看到 primary 的 c:lock 已加锁，换句话说，primary 的 c:lock 总是先于任何 secondaries 的 c:lock 先加锁。因此，Percolator 会先对 primary 加锁，后对 secondaries 加锁。
 
-##### 避免全局死锁检测
+#### 避免全局死锁检测
 
 ​	全局的死锁检测就是在一个单点上记录每个节点的加锁情况，并在检测到锁与锁之间出现环后通过 abort 事务防止死锁，另外有几种方法可以避免需要全局死锁检测，比如：
 
@@ -270,7 +270,7 @@ bool Transaction::Prewrite(Write w, Write primary) {
 
 
 
-#### 事务 commit
+### 事务 commit
 
 ​	事务 prepare 阶段确认所有 tuple 都加了锁并更新完数据后，才能进行 commit 流程。commit 时的顺序是非常重要的，因为 primary 作为整个事务的提交点必须首先提交成功，后提交其它的 secondaries。
 
@@ -278,7 +278,7 @@ bool Transaction::Prewrite(Write w, Write primary) {
 
 ![](1577874731703.png) 
 
-##### 处理抢占式 Abort
+#### 处理抢占式 Abort
 
 ​	由于 Percolator 为了避免全局死锁检测使用了 No-Wait + 抢占式 abort 的处理机制，因此在事务真正提交前事务有被其它事务 abort 的可能，这时会发现 c:lock 已经被清除，不能继续提交，必须在提交前判断 c:lock 是否仍然存在。如果事务已经被 “被动” 地 abort，就不能继续提交，若事务成功提交，就不能被 abort，所以 BackoffAndMaybeCleanupLock 和查询 c:lock 并提交 primary 两个流程必须都在单行事务内原子地完成，这样才能保证只有一方能成功地执行。
 
@@ -318,20 +318,20 @@ bool Transaction::Commit() {
 
 
 
-#### 事务残留清理
+### 事务残留清理
 
 ​	可以注意到，无论是事务 abort 还是节点失效，或者是事务正在进行中，都会在 tuple 上残留下 c:lock，这些残留的 c:lock 会在后续的事务执行时通过 Get 清理，这就引入了一个问题：**正在正常进行中的事务被误 abort 了！**所以，需要有机制判断事务是否在进行中。Percolator 通过节点周期性地向 Chubby 服务节点写 token 来宣布节点的 liveness，以及写 Wall Time 来宣布进程是否正在工作中，那么事务在 abort 其它事务前先通过 Chubby 服务确认节点是否有效以及事务是否正在进行，就能防止误 abort 正常执行中的事务了。
 
 
 
-#### 思考
+## 思考
 
 - 既然选择使用 OCC，是否可以通过对 write-set 排序后加锁的方式避免死锁？
 - 为什么修改 write 不是 inplace 地修改数据行，而是要新增一个版本？
 
 
 
-#### 参考资料
+参考资料:
 
 [1] Daniel Peng and Frank Dabek. 2010. Large-scale Incremental Processing Using Distributed Transactions and Notifications.
 
