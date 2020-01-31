@@ -30,7 +30,7 @@ tags:
 
 - 在 Bigtable API 上非 “侵入式” 地实现
 
-- 事务状态记录去中心化（时间戳分配仍然是中心化的）
+- 事务状态记录去中心化，无需 Clog 或 Commit Table（时间戳分配仍然是中心化的）
 
 - 无需全局死锁检测
 
@@ -48,13 +48,13 @@ tags:
 2. 分布式事务状态记录在发起事务的 coordinator上（ie. pgxc）
 3. 分布式事务状态记录在当前事务中某个写操作的 participant 上（ie. cockroachDB）
 
-方法1，存在单点查询的压力，但优势在于只要保证 oracle 可用，就能防止由于 coordinator 和某个 participant 同时失效而造成的后续事务被阻塞的情况。
+**方法1**，存在单点查询的压力，但优势在于只要保证 oracle 可用，就能防止由于 coordinator 和某个 participant 同时失效而造成的后续事务被阻塞的情况。
 
-方法2，分散事务状态的记录位置，缓解了单点查询的压力，但是如果 coordinator 失效，有可能造成不能确定事务提交状态从而只能阻塞后续事务的情况 ([注1][注1])。为解决这样的情况，需要使用 3PC （可以解决，但是增加通信成本） 或向其它 participant 查询也能缓解这种阻塞（只要有一个 participant 收到了 commit 消息就证明事务已提交）。
+**方法2**，分散事务状态的记录位置，缓解了单点查询的压力，但是如果 coordinator 失效，有可能造成不能确定事务提交状态从而只能阻塞后续事务的情况 ([注1][注1])。为解决这样的情况，需要使用 3PC （可以解决，但是增加通信成本） 或向其它 participant 查询也能缓解这种阻塞（只要有一个 participant 收到了 commit 消息就证明事务已提交）。
 
-方法3，当 participant 的数量比 coordinator 多或者 coordinator 节点经常变更的情况下，将事务状态分散记录在 participant 上会更合适。当然，还可以选择将事务状态分散记录在包括 coordinator 和 participant 的所有节点上，如何选择应该视实际情况分析而定。
+**方法3**，当 participant 的数量比 coordinator 多或者 coordinator 节点经常变更的情况下，将事务状态分散记录在 participant 上会更合适。当然，还可以选择将事务状态分散记录在包括 coordinator 和 participant 的所有节点上，如何选择应该视实际情况分析而定。
 
-Percolator 选择的是方法3，因为 coordinator 的角色实际是由 client 担当，coordinator 并不固定。
+Percolator 选择的是方法3，因为 coordinator 的角色实际是由 client 担当，coordinator 并不固定。另外 Percolator 的特别之处在于每个事务选出一个 primary，primary 的 tuple 作为事务提交点记录事务状态，这样事务状态不需要记录在类似 Clog、Commit table 等专门的 log 或表中。 
 
 ### 如何实现无全局死锁检测？
 
@@ -78,7 +78,7 @@ Percolator 使用了 No-Wait + 抢占式 abort 的方式处理，类似地，如
 
 #### 为什么需要  c:write ？
 
-​	理论上来讲，Bigtable 中的 tuple 是多版本的，后续读事务访问 tuple 的某个版本时，即便没有 c:write 也可以通过 primary 节点查询到对应事务的状态，确认事务提交后证明该版本的 tuple 可见。但是如果每个读事务在访问每个 tuple 时都要通过 primary 节点查询事务状态，对性能会有极大的影响。因此 c:write 在这里实际起到了“缓存”事务状态的作用（虽然称为“缓存”，但是持久化的），即如果 c:write 存在，表示这个版本的 tuple 已经提交了，如果不存在，则需要进一步向 primary 确认。
+​	理论上来讲，Bigtable 中的 tuple 是多版本的，后续读事务访问 tuple 的某个版本时，即便没有 c:write 也可以通过 primary 节点查询到对应事务的状态，确认事务提交后证明该版本的 tuple 可见。但是如果每个读事务在访问每个 tuple 时都要通过 primary 节点查询事务状态，对性能会有极大的影响。因此 c:write 在这里实际起到了“缓存”事务状态的作用（虽然称为“缓存”，但是持久化的），即如果 c:write 存在，表示这个版本的 tuple 已经提交了，如果不存在，则需要进一步向 primary 确认。另外，c:write 更新后，事务状态的记录也可以被清理了。
 
 ​	在 tuple 上增加 c:write 类似于 Postgres 在 tuple header 里加上 infomask，Postgres 通过 clog 记录了事务的状态，又在 tuple infomask 上 “缓存” 了事务提交状态。不过 Postgres 和 Percolator 对于 tuple 上状态的更新时机并不相同，Percolator 对 c:write 的更新发生在 2PC commit 流程，而 Postgres 对 tuple infomask 的更新采用的是延迟更新，即事务 commit 的时候并不会修改 tuple infomask，要等到后续事务不能判断 tuple 涉及的事务状态时，由后续事务从 clog 中查询事务状态并更新 tuple infomask。
 
@@ -128,29 +128,41 @@ class Transaction {
 
 ### 事务执行
 
-#### 主动 abort 不确定的事务
-
 ​	当事务拿到 read\_ts\_ 后，开始事务执行流程，读操作向存储数据的各个 participant 以 read\_ts\_ 时间戳读取数据（快照读），不同的是，写操作只是修改本地缓冲区中的值（OCC，延迟到 prepare）。
 
 ​	读数据的过程其实就是在寻找 tuple 在 [0, read\_ts\_] 间对外部可见（visible）的最新版本。事务的提交是“原子”的，一个事务的提交点在 commit 阶段（[见“事务 commit”](#事务 commit)）完成，commit 阶段在清除了 primary 上的 c:lock 、更新了 c:write 且确认了事务在 primary 上提交（持久化事务状态）后即表示事务提交成功。不必保证所有 participant 上的 tuple c:lock 和 c:write 都更新完才认为提交了事务，因为没有必要，此时所有的数据已经在 prepare 阶段成功更新了，只剩下 c:lock 和 c:write 的更新工作还没完成。实际上过了提交点就可以返回给 client 事务已经提交的回复，这对降低事务的延迟会有帮助。
 
-当然，这对于读操作也引入了更多的考虑，假设等所有 tuple 都更新完才在 primary 上写 WAL 确认事务提交，那么读操作只要看到 c:lock 没被清除，事务就一定没有提交，对可见性判断会更方便，而现在 c:clock 没被清除并不表示事务没被提交，对于 secondaries 上的 tuple 状态可能存在两种情况：
+当然，这对于读操作也引入了更多的考虑，假设等所有 tuple 都更新完才在 primary 上的 tuple 上清除 c:lock 确认事务提交，那么读操作只要看到 c:lock 没被清除，事务就一定没有提交，对可见性判断会更方便，而现在 c:clock 没被清除并不表示事务没被提交，对于 secondaries 上的 tuple 状态可能存在两种情况：
 
-1. c:lock 已清除、c:write 存在
+​	A1. c:lock 已清除、c:write 存在
 
-2. c:lock 未清除、c:write 不存在
+​	A2. c:lock 未清除、c:write 不存在
 
-情况1，当 tuple 在 [0, read\_ts\_] 间没有 c:lock 时，直接找到 commit_ts 在 [0, read\_ts\_] 中最新的版本即可。
+​	针对情况 A1，当 tuple 在 [0, read\_ts\_] 间不存在 c:lock 时，说明 tuple 涉及的事务一定已经提交了，直接找到 commit_ts 在 [0, read\_ts\_] 中最新的版本即可。
 
-情况2，c:lock 未清除，又可以分两种情况：
+​	针对情况 A2，c:lock 未清除，又可以分两种情况：
 
-1. 事务已经提交，但 secondaries 还未更新
+​	B1. 事务已经提交，但 secondaries 还未更新
 
-2. 事务正在进行，但未提交（包括 coordinator 已失效，c:lock 成为待清除的残留信息的情况）
+​	B2. 事务正在进行，但未提交（包括 coordinator 已失效，c:lock 成为待清除的残留信息的情况）
 
-情况1，通过由 c:lock 记录的 primary 查询事务状态，如果确认已提交，roll forward 帮忙更新 c:lock 和 c:write 后，重试读取 tuple 流程。
+​	也就是说，c:lock 未清除的情况下，tuple 涉及的分布式事务状态是不确定的，这里也称为**不确定状态的事务**，事务状态不确定，但是事务状态却会影响当前事务读操作的行为。对于情况 B1，tuple 对当前读可见，对于情况 B2，tuple 不可见。
 
-情况2，primary 中查询不到已提交信息，说明事务还在进行，或者事务已经 abort 但残留的锁还没清理。一种处理的方案是“被动”等待事务结束，假设事务因为一些原因 abort 了，就需要有额外的 service 来 rollback 事务，清除 c:lock，否则等待意味着永远阻塞。另一种方案就是不管事务是否还在进行中或已经 abort，“主动” abort 掉事务并清理 c:lock，之后重试读取 tuple 流程。Percolator 选择的正是这种 “主动” 处理的方式。优势是无需额外的 service 负责清除和更新 c:lock 及 c:write， 劣势是有可能把正在正常进行中的事务给 abort 了（[解决方案见 "事务残留清理"](#事务残留清理)）。
+​	对于不确定状态的事务处理，这里列两种不同的处理方式，"主动查询" 和 "被动等待"。
+
+#### 主动查询不确定状态的事务
+
+​	既然整个分布式事务的状态决定了后续事务读的处理方式，那么就去事务状态记录节点，也就是 c:lock 记录的 primary 上去查询事务状态吧，这就是一种 “主动” 查询的方式，也是 Percolator 的选择。
+
+​	对于情况 B1，通过 primary 查询到事务已经提交，那么就 roll forward 帮忙更新 c:lock 和 c:write 后，重试读取 tuple 流程。
+
+​	对于情况 B2，因为 primary 中查询不到已提交信息，说明事务还在进行，或者事务已经 abort 但残留的锁还没清理，对 tuple 直接不可见即可。
+
+​	这里还涉及到对事务残留锁的处理，因为 c:lock 未清除也可能因为之前节点失效造成的事务残留，Percolator 没有其它的服务来处理这种残留事务锁，因此他选择了一种 abort 的策略，不管 tuple 上的 c:lock 是还在进行中的事务设置的还是 abort/不可追溯的事务残留下来的锁，都通过 abort 事务清理。不过问题在于有可能把正在正常进行中的事务给 abort 了（[解决方案见 "事务残留清理"](#事务残留清理)）。
+
+​	之后重试读取 tuple 的流程。
+
+​	 “主动” 查询的方式，优势在于不会出现事务读操作在 tuple 上白白等待的情况，劣势是会增加一些通信开销。
 
 ​	综上，相关的代码如下：
 
@@ -186,9 +198,11 @@ void Transaction::Set(Write w) {
 }
 ```
 
-#### 被动等待不确定的事务
+#### 被动等待不确定状态的事务
 
-​	对于 c:lock 未清除的情况，pgxc 的处理方法是等待 tuple，直到 tuple 上的锁被清理，不管事务最终是 commit 还是 abort，都会有 gs_clean 服务周期性地查询每个 participant 上 prepared 但未 commit 的事务，然后帮忙去 coordinator 查询事务状态并通过 coordinator 重新向对应的 participant 发送 commit 或 abort 消息。之所以 pgxc 可以使用这样的方法是因为有固定的多个 coordinator，并且事务状态也是记录在 coordinator 上的，
+​	和 “主动” 查询相对应的方法就不去事务状态记录节点查询，而是等待通知。比如 pgxc 的处理方法是等待 tuple，直到 tuple 上的锁被清理，不管事务最终是 commit 还是 abort，会有 gs_clean 服务周期性地查询每个 participant 上 prepared 但未 commit 的事务，然后帮忙去 coordinator 查询事务状态并通过 coordinator 重新向对应的 participant 发送 commit 或 abort 消息。之所以 pgxc 可以使用这样的方法是因为有固定的多个 coordinator，并且事务状态也是记录在 coordinator 上的。
+
+​	关于 “被动” 等待的处理方式，存在一个问题：**如何区分当前事务应该在这个 tuple 上等待，还是视其为不可见？**实际上，只要本地没有事务提交记录，都需要等待。有些分布式事务不是基于分布式并发控制的做法，而是将查询下推到各个 participant，各个 participant 执行查询相当于执行本地事务，那么在 participant 上也会有本地的事务状态记录，本地事务提交意味着整个分布式事务一定已经提交，但本地事务未提交，并不意味着整个分布式事务未提交。假设整个事务未提交，后续读事务应该视其为不可见，假设整个事务提交，后续事务应该等待在 tuple 上，然而是无法在 participant 本地确认整个事务状态的，所以这种情况只能等待在 tuple 上。不过，有一些可以优化的点，比如将 prepared 事务的事务状态记为特殊的 prepared_committing 状态，遇到 prepared_committing 状态才等待，prepared_committing 之前的状态都视为不可见，这样减少了不必要的等待时间，当然，还是存在 prepared 事务最后 abort 了，导致后续事务在 tuple 上白白等待的情况。
 
 
 
@@ -202,7 +216,7 @@ void Transaction::Set(Write w) {
 
 ​	**那么有没有可能向 primary 查询事务状态时不通过 primary 的 WAL？**
 
-​	实际上对加锁顺序做一个小小地调整就可以做到。事务的提交点保证了 primary 上 tuple c:lock 已经被清除，那么如果向 primary 查询事务状态时发现 tuple 的 c:lock 不存在，是否可以认为事务已提交？ 这需要保证除了提交点之后的任何时候，任意 secondaries 的 c:lock 加锁后，也必须能看到 primary 的 c:lock 已加锁，换句话说，primary 的 c:lock 总是先于任何 secondaries 的 c:lock 先加锁。因此，Percolator 会先对 primary 加锁，后对 secondaries 加锁。
+​	实际上对加锁顺序做一个小小地调整就可以做到。事务的提交点保证了 primary 上 tuple c:lock 已经被清除，那么如果向 primary 查询事务状态时发现 tuple 的 c:lock 不存在，是否可以认为事务已提交？ 这需要保证除了提交点之后的任何时候，任意 secondaries 的 c:lock 加锁后，也必须能看到 primary 的 c:lock 已加锁，换句话说，primary 的 c:lock 总是先于任何 secondaries 的 c:lock 先加锁。因此，Percolator 会先对 primary 加锁，后对 secondaries 加锁，这也决定了 Percolator 的事务状态不需要用类似 Clog 或 Commit Table 的方式记录 。
 
 #### 避免全局死锁检测
 
