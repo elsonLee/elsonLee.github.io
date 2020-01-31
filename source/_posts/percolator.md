@@ -50,7 +50,7 @@ tags:
 
 **方法1**，存在单点查询的压力，但优势在于只要保证 oracle 可用，就能防止由于 coordinator 和某个 participant 同时失效而造成的后续事务被阻塞的情况。
 
-**方法2**，分散事务状态的记录位置，缓解了单点查询的压力，但是如果 coordinator 失效，有可能造成不能确定事务提交状态从而只能阻塞后续事务的情况 ([注1][注1])。为解决这样的情况，需要使用 3PC （可以解决，但是增加通信成本） 或向其它 participant 查询也能缓解这种阻塞（只要有一个 participant 收到了 commit 消息就证明事务已提交）。
+**方法2**，分散事务状态的记录位置，缓解了单点查询的压力，但是如果 coordinator 失效，有可能造成不能确定事务提交状态从而只能阻塞后续事务的情况 ([注1])。为解决这样的情况，需要使用 3PC （可以解决，但是增加通信成本） 或向其它 participant 查询也能缓解这种阻塞（只要有一个 participant 收到了 commit 消息就证明事务已提交）。
 
 **方法3**，当 participant 的数量比 coordinator 多或者 coordinator 节点经常变更的情况下，将事务状态分散记录在 participant 上会更合适。当然，还可以选择将事务状态分散记录在包括 coordinator 和 participant 的所有节点上，如何选择应该视实际情况分析而定。
 
@@ -345,7 +345,7 @@ bool Transaction::Commit() {
 
 
 
-参考资料:
+## 参考资料:
 
 [1] Daniel Peng and Frank Dabek. 2010. Large-scale Incremental Processing Using Distributed Transactions and Notifications.
 
