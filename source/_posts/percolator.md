@@ -2,6 +2,8 @@
 title: 剖析 Percolator 分布式事务设计思路
 date: 2020-01-30 16:05:26
 tags:
+- 数据库
+- 分布式事务
 ---
 
 
@@ -345,7 +347,7 @@ bool Transaction::Commit() {
 
 
 
-## 参考资料:
+## 参考资料
 
 [1] Daniel Peng and Frank Dabek. 2010. Large-scale Incremental Processing Using Distributed Transactions and Notifications.
 
