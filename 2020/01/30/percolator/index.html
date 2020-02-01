@@ -68,7 +68,7 @@
 
 
 
-  <meta name="keywords" content="Hexo, NexT">
+  <meta name="keywords" content="数据库,分布式事务,">
 
 
 
@@ -80,6 +80,7 @@
 
 
 <meta name="description" content="摘要：分析了 Percolator 分布式事务在一些细节上的设计思路和取舍。 背景​    Google 搜索引擎的网页索引一直是由 MapReduce 进行批处理建立的，但是 MapReduce 对于索引的增量更新来说处理代价很大，必须针对整个数据仓库重新处理。因此提出了 Percolator 项目，为了提供一种增量处理少量索引更新的能力。 ​    数据在底层存储于分布式存储系统 Bigtab">
+<meta name="keywords" content="数据库,分布式事务">
 <meta property="og:type" content="article">
 <meta property="og:title" content="剖析 Percolator 分布式事务设计思路">
 <meta property="og:url" content="http://yoursite.com/2020/01/30/percolator/index.html">
@@ -90,7 +91,7 @@
 <meta property="og:image" content="http://yoursite.com/2020/01/30/percolator/1577864441639.png">
 <meta property="og:image" content="http://yoursite.com/2020/01/30/percolator/1577874574402.png">
 <meta property="og:image" content="http://yoursite.com/2020/01/30/percolator/1577874731703.png">
-<meta property="og:updated_time" content="2020-02-01T07:41:44.803Z">
+<meta property="og:updated_time" content="2020-02-01T07:57:37.621Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="剖析 Percolator 分布式事务设计思路">
 <meta name="twitter:description" content="摘要：分析了 Percolator 分布式事务在一些细节上的设计思路和取舍。 背景​    Google 搜索引擎的网页索引一直是由 MapReduce 进行批处理建立的，但是 MapReduce 对于索引的增量更新来说处理代价很大，必须针对整个数据仓库重新处理。因此提出了 Percolator 项目，为了提供一种增量处理少量索引更新的能力。 ​    数据在底层存储于分布式存储系统 Bigtab">
@@ -411,7 +412,7 @@
 <li>既然选择使用 OCC，是否可以通过对 write-set 排序后加锁的方式避免死锁？</li>
 <li>为什么修改 write 不是 inplace 地修改数据行，而是要新增一个版本？</li>
 </ul>
-<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料:"></a>参考资料:</h2><p>[1] Daniel Peng and Frank Dabek. 2010. Large-scale Incremental Processing Using Distributed Transactions and Notifications.</p>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p>[1] Daniel Peng and Frank Dabek. 2010. Large-scale Incremental Processing Using Distributed Transactions and Notifications.</p>
 <p>[注1]:     “coordinator 失效就无法直接获取事务状态信息，意味着有可能无法判断事务是否已经提交，因为假设从其他 participant 上查询发现没有收到 commit 消息，并不能证明事务没有提交。”</p>
 
       
@@ -427,6 +428,14 @@
     
 
     <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/数据库/" rel="tag"># 数据库</a>
+          
+            <a href="/tags/分布式事务/" rel="tag"># 分布式事务</a>
+          
+        </div>
       
 
       
@@ -531,6 +540,15 @@
             
 
             
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
 
           </nav>
 
@@ -559,7 +577,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#条件和约束"><span class="nav-number">2.</span> <span class="nav-text">条件和约束</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#技术点"><span class="nav-number">3.</span> <span class="nav-text">技术点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#关键问题"><span class="nav-number">4.</span> <span class="nav-text">关键问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何记录分布式事务状态？"><span class="nav-number">4.1.</span> <span class="nav-text">如何记录分布式事务状态？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现无全局死锁检测？"><span class="nav-number">4.2.</span> <span class="nav-text">如何实现无全局死锁检测？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#系统设计分析"><span class="nav-number">5.</span> <span class="nav-text">系统设计分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#非侵入式实现"><span class="nav-number">5.1.</span> <span class="nav-text">非侵入式实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#为什么需要-c-write-？"><span class="nav-number">5.1.1.</span> <span class="nav-text">为什么需要  c:write ？</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Snapshot-时间戳分配的考量"><span class="nav-number">5.2.</span> <span class="nav-text">Snapshot 时间戳分配的考量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务执行"><span class="nav-number">5.3.</span> <span class="nav-text">事务执行</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#主动查询不确定状态的事务"><span class="nav-number">5.3.1.</span> <span class="nav-text">主动查询不确定状态的事务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#被动等待不确定状态的事务"><span class="nav-number">5.3.2.</span> <span class="nav-text">被动等待不确定状态的事务</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务-prepare"><span class="nav-number">5.4.</span> <span class="nav-text">事务 prepare</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#加锁顺序"><span class="nav-number">5.4.1.</span> <span class="nav-text">加锁顺序</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#避免全局死锁检测"><span class="nav-number">5.4.2.</span> <span class="nav-text">避免全局死锁检测</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务-commit"><span class="nav-number">5.5.</span> <span class="nav-text">事务 commit</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#处理抢占式-Abort"><span class="nav-number">5.5.1.</span> <span class="nav-text">处理抢占式 Abort</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务残留清理"><span class="nav-number">5.6.</span> <span class="nav-text">事务残留清理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#思考"><span class="nav-number">6.</span> <span class="nav-text">思考</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">7.</span> <span class="nav-text">参考资料:</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#条件和约束"><span class="nav-number">2.</span> <span class="nav-text">条件和约束</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#技术点"><span class="nav-number">3.</span> <span class="nav-text">技术点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#关键问题"><span class="nav-number">4.</span> <span class="nav-text">关键问题</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#如何记录分布式事务状态？"><span class="nav-number">4.1.</span> <span class="nav-text">如何记录分布式事务状态？</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#如何实现无全局死锁检测？"><span class="nav-number">4.2.</span> <span class="nav-text">如何实现无全局死锁检测？</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#系统设计分析"><span class="nav-number">5.</span> <span class="nav-text">系统设计分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#非侵入式实现"><span class="nav-number">5.1.</span> <span class="nav-text">非侵入式实现</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#为什么需要-c-write-？"><span class="nav-number">5.1.1.</span> <span class="nav-text">为什么需要  c:write ？</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Snapshot-时间戳分配的考量"><span class="nav-number">5.2.</span> <span class="nav-text">Snapshot 时间戳分配的考量</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务执行"><span class="nav-number">5.3.</span> <span class="nav-text">事务执行</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#主动查询不确定状态的事务"><span class="nav-number">5.3.1.</span> <span class="nav-text">主动查询不确定状态的事务</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#被动等待不确定状态的事务"><span class="nav-number">5.3.2.</span> <span class="nav-text">被动等待不确定状态的事务</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务-prepare"><span class="nav-number">5.4.</span> <span class="nav-text">事务 prepare</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#加锁顺序"><span class="nav-number">5.4.1.</span> <span class="nav-text">加锁顺序</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#避免全局死锁检测"><span class="nav-number">5.4.2.</span> <span class="nav-text">避免全局死锁检测</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务-commit"><span class="nav-number">5.5.</span> <span class="nav-text">事务 commit</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#处理抢占式-Abort"><span class="nav-number">5.5.1.</span> <span class="nav-text">处理抢占式 Abort</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#事务残留清理"><span class="nav-number">5.6.</span> <span class="nav-text">事务残留清理</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#思考"><span class="nav-number">6.</span> <span class="nav-text">思考</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">7.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
             
 
           </div>
