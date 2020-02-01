@@ -156,9 +156,9 @@ class Transaction {
 
 ​	对于情况 B1，通过 primary 查询到事务已经提交，那么就 roll forward 帮忙更新 c:lock 和 c:write 后，重试读取 tuple 流程。
 
-​	对于情况 B2，因为 primary 中查询不到已提交信息，说明事务还在进行，或者事务已经 abort 但残留的锁还没清理，对 tuple 直接不可见即可。
+​	对于情况 B2，因为 primary 中查询不到已提交信息，说明事务还在进行，或者事务已经 abort 但残留的锁还没清理。但是对 tuple 还不能以不可见处理，因为虽然 tuple 涉及的事务还没有提交，但是已经申请到了 commit_ts，且 commit_ts 小于当前事务的 read_ts，一般来说，这时需要等待 tuple 涉及的事务完成。
 
-​	这里还涉及到对事务残留锁的处理，因为 c:lock 未清除也可能因为之前节点失效造成的事务残留，Percolator 没有其它的服务来处理这种残留事务锁，因此他选择了一种 abort 的策略，不管 tuple 上的 c:lock 是还在进行中的事务设置的还是 abort/不可追溯的事务残留下来的锁，都通过 abort 事务清理。不过问题在于有可能把正在正常进行中的事务给 abort 了（[解决方案见 "事务残留清理"](#事务残留清理)）。
+​	不过 Percolator 没有选择等待在 tuple 上，而是采取了另一种方法，abort tuple 涉及的事务，这就不用在 tuple 上继续等待了。之所以这么设计，我想一方面是等待问题，还有一方面涉及到对事务残留锁的处理，因为 c:lock 未清除也可能因为之前节点失效造成的事务残留，Percolator 没有其它的服务来处理这种残留事务锁，因此选择 abort 的策略，不管 tuple 上的 c:lock 是还在进行中的事务设置的还是 abort/不可追溯的事务残留下来的锁，都通过 abort 事务清理。不过问题在于有可能把正在正常进行中的事务给 abort 了（[解决方案见 "事务残留清理"](#事务残留清理)）。
 
 ​	之后重试读取 tuple 的流程。
 
@@ -185,7 +185,7 @@ bool Transaction::Get(Row row, Column c, string* value) {
                 return true;
             }
         } else { // 如果c:lock未清除
-            // 查询primary，执行roll forward或roll back
+            // 查询primary，查到提交执行roll forward，否则执行roll back
             BackoffAndMaybeCleanupLock(row, c);
         }
          /* 单行事务结束 */
