@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+
+
+
+  
+
+
+<html class="theme-next muse use-motion" lang="zh-Hans">
+<head><meta name="generator" content="Hexo 3.8.0">
+  <meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#222">
+
+
+
+
+
+
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css">
+
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css">
+
+<link href="/css/main.css?v=5.1.4" rel="stylesheet" type="text/css">
+
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png?v=5.1.4">
+
+
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png?v=5.1.4">
+
+
+  <link rel="mask-icon" href="/images/logo.svg?v=5.1.4" color="#222">
+
+
+
+
+
+  <meta name="keywords" content="数据库,分布式事务,">
+
+
+
+
+
+
+
+
+
+
+<meta name="description" content="摘要：分析了 Omid 分布式事务在一些细节上的设计思路和取舍。  转载或者引用本文内容请注明来源及原作者  背景Yahoo 需要一种可扩展、可靠且能提供 ACID 语义的分布式事务服务。 条件和约束 兼容多种 NoSQL kv 存储（当前基于 HBase），这点和 Percolator 类似，后者基于 Bigtable 简单（部署、维护、监控） 支持跨行、跨表的事务，为了高扩展性，提供 SI 隔">
+<meta name="keywords" content="数据库,分布式事务">
+<meta property="og:type" content="article">
+<meta property="og:title" content="剖析 Omid 分布式事务设计思路">
+<meta property="og:url" content="http://yoursite.com/2020/02/02/omid/index.html">
+<meta property="og:site_name" content="Lexun&#39;s Notes">
+<meta property="og:description" content="摘要：分析了 Omid 分布式事务在一些细节上的设计思路和取舍。  转载或者引用本文内容请注明来源及原作者  背景Yahoo 需要一种可扩展、可靠且能提供 ACID 语义的分布式事务服务。 条件和约束 兼容多种 NoSQL kv 存储（当前基于 HBase），这点和 Percolator 类似，后者基于 Bigtable 简单（部署、维护、监控） 支持跨行、跨表的事务，为了高扩展性，提供 SI 隔">
+<meta property="og:locale" content="zh-Hans">
+<meta property="og:image" content="http://yoursite.com/2020/02/02/omid/image-20200131152526969.png">
+<meta property="og:updated_time" content="2020-02-02T13:12:15.586Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="剖析 Omid 分布式事务设计思路">
+<meta name="twitter:description" content="摘要：分析了 Omid 分布式事务在一些细节上的设计思路和取舍。  转载或者引用本文内容请注明来源及原作者  背景Yahoo 需要一种可扩展、可靠且能提供 ACID 语义的分布式事务服务。 条件和约束 兼容多种 NoSQL kv 存储（当前基于 HBase），这点和 Percolator 类似，后者基于 Bigtable 简单（部署、维护、监控） 支持跨行、跨表的事务，为了高扩展性，提供 SI 隔">
+<meta name="twitter:image" content="http://yoursite.com/2020/02/02/omid/image-20200131152526969.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Muse',
+    version: '5.1.4',
+    sidebar: {"position":"left","display":"post","offset":12,"b2t":false,"scrollpercent":false,"onmobile":false},
+    fancybox: true,
+    tabs: true,
+    motion: {"enable":true,"async":false,"transition":{"post_block":"fadeIn","post_header":"slideDownIn","post_body":"slideDownIn","coll_header":"slideLeftIn","sidebar":"slideUpIn"}},
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="http://yoursite.com/2020/02/02/omid/">
+
+
+
+
+
+  <title>剖析 Omid 分布式事务设计思路 | Lexun's Notes</title>
+  
+
+
+
+
+
+
+
+
+</head>
+
+<body itemscope="" itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope="" itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/" class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">Lexun's Notes</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle"></p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br>
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br>
+            
+            归档
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope="" itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2020/02/02/omid/">
+
+    <span hidden itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Lexun">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope="" itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Lexun's Notes">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">剖析 Omid 分布式事务设计思路</h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2020-02-02T21:08:58+08:00">
+                2020-02-02
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <p>摘要：分析了 Omid 分布式事务在一些细节上的设计思路和取舍。</p>
+<blockquote>
+<p>转载或者引用本文内容请注明来源及原作者</p>
+</blockquote>
+<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>Yahoo 需要一种可扩展、可靠且能提供 ACID 语义的分布式事务服务。</p>
+<h2 id="条件和约束"><a href="#条件和约束" class="headerlink" title="条件和约束"></a>条件和约束</h2><ul>
+<li>兼容多种 NoSQL kv 存储（当前基于 HBase），这点和 Percolator 类似，后者基于 Bigtable</li>
+<li>简单（部署、维护、监控）</li>
+<li>支持跨行、跨表的事务，为了高扩展性，提供 SI 隔离级别的 ACID 语义</li>
+<li>高可用</li>
+</ul>
+<h2 id="技术点"><a href="#技术点" class="headerlink" title="技术点"></a>技术点</h2><ul>
+<li>中心化的 transaction manager (TM)，负责时间戳分配、事务状态记录以及并发冲突检测</li>
+<li>在 HBase API 上非 “侵入式” 地实现</li>
+<li>lock-free 的并发控制机制，无需考虑死锁检测的问题</li>
+</ul>
+<h2 id="系统设计分析"><a href="#系统设计分析" class="headerlink" title="系统设计分析"></a>系统设计分析</h2><p>同 Percolator 相同，底层存储层本身提供了数据持久化、可扩展性以及高可用，因此 Omid 只需要提供分布式事务的功能。</p>
+<h3 id="分布式事务状态记录"><a href="#分布式事务状态记录" class="headerlink" title="分布式事务状态记录"></a>分布式事务状态记录</h3><p>和 Percolator 相同的是 Omid 的事务状态记录在 Hbase 上，直接利用了底层数据层的扩展性和可用性，不同的是 Percolator 将事务状态分散记录到每个事务 primary 节点的 tuple 上，而 Omid 的事务没有设计类似 primary 的概念，因此需要专门的表 Commit Table（CT）负责记录。</p>
+<p>类似地，Omid 也通过在数据表上开启特殊列记录事务的元数据非侵入式地实现事务，包括事务 id 和 commit_ts（lock-free 的并发控制，所以没有 lock），如下图：</p>
+<p><img src="image-20200131152526969.png" alt=""></p>
+<p>其中的 <code>cf</code> 列和 Percolator 中的 c:write 相同，优化事务可见性查询的效率，允许后续事务查询 CT 后延迟更新。一旦事务设计的所有 tuple 的 cf 更新完毕，Commit Table 中相应的条目就可以清除了。</p>
+<h3 id="时间戳分配和不确定状态事务的处理"><a href="#时间戳分配和不确定状态事务的处理" class="headerlink" title="时间戳分配和不确定状态事务的处理"></a>时间戳分配和不确定状态事务的处理</h3><p>和许多分布式事务方案一样，Omid 采用了中心化纯逻辑时钟的分配方案，在事务开始时向 TM 申请 <code>read_ts</code>，提交时申请 <code>commit_ts</code>。不过不同的是，Omid 在时间戳分配过程中就解决了不确定状态的事务的处理问题。</p>
+<p>不确定状态的事务，指的是某个事务 T2 在读 tuple 时，不确定 tuple 涉及的事务 T1 是否已经提交的情况，其中的 T1 就是不确定状态的事务。在 Percolator 一文中提到过两种方法，一种是 “被动” 等待 tuple 涉及的事务结束并通知到 participant 上的事务 T2，另一种是像 Percolator 一样 “主动” 去事务状态的记录节点查询事务状态。</p>
+<p>Omid 针对不确定状态的事务的处理采用的也是 “主动” 向 CT 查询事务状态，如果 CT 记录了事务 T1 已经提交，那么当前事务 T2 帮忙 roll forward 更新 tuple 上的 commit 列。和 Percolator 不同的是，如果 CT 没有查到T1 的事务状态，这时虽然事务 T1 没有提交，但是有可能已经拿到了 commit_ts，且小于当前事务 T2 的 read_ts，Percolator 选择 abort T1，而 Omid 选择不让这样的场景发生：<strong>推迟 T2 的开始，直到 T1 结束</strong>（包括完成更新 CT）。</p>
+<p>这样对于事务可见性判断就简单了：</p>
+<blockquote>
+<p>如果 CT 中查不到 T1 的提交状态，那么 tuple 一定不可见</p>
+</blockquote>
+<p>当 T2 向 TM 申请 read_ts（和 txid 等价）时，TM 会确保所有 pending 事务中 commit_ts 比待分配 txid 小的事务结束后（commit/abort）才能返回 txid，伪代码如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// TM</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">Begin</span> <span class="params">()</span> </span>&#123;</span><br><span class="line">    txid = Clock.FetchAndIncrement();	<span class="comment">// 取read_ts，也作为txid</span></span><br><span class="line">	<span class="keyword">for</span> (<span class="keyword">auto</span> txn : pending_txns) &#123;</span><br><span class="line">        <span class="keyword">if</span> (txn.commit_ts &lt; txid) &#123;</span><br><span class="line">            WaitTillComplete(txn);      <span class="comment">// 等待所有commit_ts &lt; txid的事务结束</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> txid;</span><br></pre></td></tr></table></figure>
+<p>那么显而易见，TM 必须要知道每个事务的状态才能判断是否要等待事务完成，不愿引入额外的通信开销的话，TM 就要负责事务状态记录（更新 CT），这也解释了为什么 Omid 会把更新 CT 的工作也交给 TM 做的原因，伪代码如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// TM</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">Commit</span> <span class="params">(txid, write-<span class="built_in">set</span>)</span> </span>&#123;</span><br><span class="line">    commit_ts = Clock.FetchAndIncrement();</span><br><span class="line">    <span class="keyword">if</span> (ConflictDetect(txid, write-<span class="built_in">set</span>) == COMMIT) &#123;</span><br><span class="line">        UpdateCT(txid, commit_ts);</span><br><span class="line">        <span class="keyword">return</span> commit_ts;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 这里也需要通知WaitTillComplete停止等待txid</span></span><br><span class="line">        <span class="keyword">return</span> ABORT;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>client 端对事务可见性检查的逻辑就比较简单了，如果 tuple.commit 不为空，和 read_ts 比较判断可见性，如果为空，查 CT，存在则继续判断可见性，不存在则不可见。但是注意，这里存在一个竞争条件，当发现 tuple.commit 为空后，查询 CT 为空，有可能存在另一个事务在这两个操作之间更新了 tuple.commit 并删除了 CT 中的记录，所以查询 CT 为空后，要重新查询下 tuple.commit 是否还为空，如果为空就说明事务没提交，以不可见处理。伪代码如下：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// client</span></span><br><span class="line"><span class="function">Value <span class="title">Get</span> <span class="params">(key)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 从最新的版本开始遍历</span></span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span> it = tuple.versions.end(); it &gt;= tuple.versions.begin(); it--) &#123;</span><br><span class="line">        <span class="comment">// 确定提交</span></span><br><span class="line">        <span class="keyword">if</span> (it.commit != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        	<span class="keyword">if</span> (it.commit &lt; read_ts_) &#123; <span class="comment">// 在snapshot中</span></span><br><span class="line">                <span class="keyword">return</span> it.value;</span><br><span class="line">            &#125;    </span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            value = GetTentativeValue(it, key);</span><br><span class="line">            <span class="keyword">if</span> (value != <span class="literal">NULL</span>) &#123;</span><br><span class="line">                <span class="keyword">return</span> value;</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="function">Value <span class="title">GetTentativeValue</span> <span class="params">(iterator it, key)</span> </span>&#123;</span><br><span class="line">    <span class="comment">// 在CT中查找txid(read_ts)</span></span><br><span class="line">    present, commit_ts = CT.find(it.txid);</span><br><span class="line">    <span class="keyword">if</span> (present) &#123; <span class="comment">// 存在，继续判断是否在snapshot中</span></span><br><span class="line">        it.commit = commit_ts;</span><br><span class="line">        <span class="keyword">if</span> (it.commit &lt; read_ts_) &#123;</span><br><span class="line">            <span class="keyword">return</span> it.value;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123; <span class="comment">// 不存在，再次确认未提交后以不可见处理</span></span><br><span class="line">        record = tuple.versions.get(it.txid);</span><br><span class="line">        <span class="keyword">if</span> (record.commit != <span class="literal">NULL</span> &amp;&amp; record.commit &lt; read_ts_) &#123;</span><br><span class="line">            <span class="keyword">return</span> record.value;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h4 id="关于等待粒度的思考"><a href="#关于等待粒度的思考" class="headerlink" title="关于等待粒度的思考"></a>关于等待粒度的思考</h4><p>Omid 让事务在取 read_ts 时等待所有已经分配 commit_ts 的事务结束，虽然方便了事务可见性检查，但是等待的粒度其实是很大的。假设 T1 修改的不是 T2 正在读的 tuple，那么 T2 在不涉及查询 T1 状态的前提下还要等待 T1，这显然是没有必要的。</p>
+<p>讨论如果将等待的粒度减小到 tuple 级，那么 T2 的等待一定不会发生在 TM 分配 read_ts 的时候，而会发生 T2 执行时读 tuple 的时候，由于查询到 CT 没有事务 T1 的提交状态，又不确定 T1 是否申请了 commit_ts，那么就等待在 tuple 上，直到 T1 结束。这其实就是 pgxc 的方案，等待的粒度小很多，但也可以看到，如果 T1 此时没有申请 commit_ts，等待同样是没有必要的。</p>
+<p><strong>有没有可能完全避免不必要的等待？</strong></p>
+<p>对于这个问题的思考会另起一篇文章</p>
+<h3 id="lock-free-并发控制"><a href="#lock-free-并发控制" class="headerlink" title="lock-free 并发控制"></a>lock-free 并发控制</h3><p>SI 隔离级别的实现，需要解决写-写冲突，即保证被写的 tuple 在 read_ts 和 commit_ts 之间没有被其它事务修改。和 Omid 相同，Percolator 也是基于 OCC 的并发控制，为了实现 SI 隔离级别，Percolator 在 validation 过程（prepare 流程）中利用单行原子读改写保证了 tuple 没有写-写冲突后，对 tuple 加了锁，并且，只有当事务涉及的所有写 tuple 都加上锁后才能进行 commit 流程，申请 commit_ts，冲突检测保证了加锁前 tuple 没有被改，对 tuple 加锁又保证了在事务真正提交前其它事务无法对 tuple 修改。</p>
+<p>因为 Percolator 通过加锁防止写-写冲突，所以数据的更新可以推迟至 validation 的时候，事务执行时只需将写数据写入 client（也是 coordinator）的本地缓存。</p>
+<h4 id="如果-validation-的时候不加锁，能不能实现-SI-隔离级别？"><a href="#如果-validation-的时候不加锁，能不能实现-SI-隔离级别？" class="headerlink" title="如果 validation 的时候不加锁，能不能实现 SI 隔离级别？"></a>如果 validation 的时候不加锁，能不能实现 SI 隔离级别？</h4><p>Percolator 之所以加锁的原因在于即便某个 tuple 在 validation 是没有发现写-写冲突，但不能保证此时到申请到 commit_ts 之间没有其它事务以大于 read_ts 的 commit_ts 修改了这个 tuple。那么换个思路，如果事务 T 先申请 commit_ts，再做 validation + 写数据（携带 commit_ts，但要和已提交事务的 tuple 区分开，并且 validation 和 写数据是原子的），只要通过冲突检测（数据更新成功），任何 read_ts &lt; T.commit_ts 的事务都无法通过冲突检测，也就不需要加锁了。</p>
+<p>Omid 采用了类似的思路，不过做了一些调整，因为现在更新 CT 的工作被放在了 TM 上，如果 validation 在 client（coordinator）上，流程将会是：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">1. client 发送 GetCommtTs 给 TM (1次msg)</span><br><span class="line">2. TM 分配 commit_ts 给 client (2次msg)</span><br><span class="line">3. client 做并发冲突检测，成功发送 Commit 给 TM (3次msg)，并更新 CT（4次msg）</span><br></pre></td></tr></table></figure>
+<p>以上涉及了四次消息传递，Omid 索性将并发控制检测也放在了 TM 端，少一次消息传递，流程变为：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">1. client 发送 Commit 给 TM (1次msg)</span><br><span class="line">2. TM 分配 commit_ts</span><br><span class="line">3. TM 做并发冲突检测，成功发送 commit_ts 给 client (2次msg)，并更新 CT (3次msg)</span><br></pre></td></tr></table></figure>
+<p>client 发送 Commit 消息时，携带了本地写缓存，由于数据量可能很大，如果直接将数据传给 TM，相同数据需要两次经过网络，一次是从 client 传到 TM，一次是从 TM 写到 participant，为了减少数据传输，Omid 在事务执行写操作时，client 直接将数据写入 Hbase，并且本地仍然记录写缓存用于冲突检测（不携带真正的数据，只是 tuple 的标识），本地写缓存记为 <code>write-set</code>，通过 Commit 消息传给 TM。重新看一下 TM.Commit 逻辑：</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// TM</span></span><br><span class="line"><span class="function"><span class="keyword">int</span> <span class="title">Commit</span> <span class="params">(txid, write-<span class="built_in">set</span>)</span> </span>&#123;  <span class="comment">// 携带写缓存</span></span><br><span class="line">    commit_ts = Clock.FetchAndIncrement();  <span class="comment">// 先申请commit_ts</span></span><br><span class="line">    <span class="keyword">if</span> (ConflictDetect(txid, write-<span class="built_in">set</span>) == COMMIT) &#123; <span class="comment">// 再做冲突检测</span></span><br><span class="line">        UpdateCT(txid, commit_ts);</span><br><span class="line">        <span class="keyword">return</span> commit_ts;</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 这里也需要通知WaitTillComplete停止等待txid</span></span><br><span class="line">        <span class="keyword">return</span> ABORT;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>由于冲突检测都在 TM 上做，所以就不需要在向 participant 写数据时携带 commit_ts 了。不过可能会有单点性能问题。</p>
+<h4 id="冲突检测"><a href="#冲突检测" class="headerlink" title="冲突检测"></a>冲突检测</h4><p>每个事务在向 TM commit 时会携带本地缓存的 write-set，TM 会维护一个 hash 表记录 <code>&lt;key, commit_ts&gt;</code>，每个 key 只需要记录最大的 commit_ts 即可。为了节省空间，每个 hash 表内每个 bucket 的大小是固定的，如果某个 bucket 满了，就一律 abort，显然如果 bucket 满了，未记录的 key 涉及的事务总是被 abort，为了缓解这种情况，在每个 bucket 上加了一个成员变量 <code>smallestCommitTs_</code> 用来记录 bucket 满之后未记录的拥有最大 commit_ts 的 &lt;key, commit_ts&gt; 对。如果 txid &gt; smallestCommitTs_，说明之前即便有事务改写 key 没记录，其 commit_ts 也不超过 txid，没有冲突，可以提交。</p>
+<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">Status <span class="title">ConflictDetect</span> <span class="params">(txid, commit_ts, write-<span class="built_in">set</span>)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">for</span> (<span class="keyword">auto</span> key : write-<span class="built_in">set</span>) &#123;</span><br><span class="line">        <span class="comment">// hash表以bucket粒度加锁</span></span><br><span class="line">        <span class="keyword">auto</span> bucket = buckets_.get(key);</span><br><span class="line">        <span class="function">LockGuard <span class="title">lock</span><span class="params">(bucket.lock)</span></span>;</span><br><span class="line">        <span class="comment">// 最多只有一个&lt;key, commit_ts&gt;</span></span><br><span class="line">        <span class="keyword">auto</span> p = bucket.get(key);</span><br><span class="line">        <span class="keyword">auto</span> small = bucket.smallestCommitTs_; <span class="comment">// bucket中记录的最小commit_ts的pair</span></span><br><span class="line">        </span><br><span class="line">        <span class="comment">// 如果之前没有记录，尝试插入记录</span></span><br><span class="line">        <span class="keyword">if</span> (p == nil) &#123;</span><br><span class="line">            <span class="keyword">if</span> (!bucket.IsFull()) &#123;</span><br><span class="line">                bucket.<span class="built_in">set</span>(key, commit_ts);</span><br><span class="line">                <span class="keyword">return</span> COMMIT;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (small.commit_ts &lt; txid) &#123;</span><br><span class="line">                bucket.smallestCommitTs_ = pair(key, commit_ts);</span><br><span class="line">                <span class="keyword">return</span> COMMIT;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="keyword">return</span> ABORT; <span class="comment">// 存在false positive</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">            <span class="keyword">if</span> (p.commit_ts &gt; txid) &#123; <span class="comment">// ww-conflict</span></span><br><span class="line">                <span class="keyword">return</span> ABORT;</span><br><span class="line">            &#125; <span class="keyword">else</span> <span class="keyword">if</span> (p.commit_ts &lt; txid) &#123;</span><br><span class="line">                bucket.<span class="built_in">set</span>(key, commit_ts);   <span class="comment">// 更新为最新的commit_ts</span></span><br><span class="line">                <span class="keyword">return</span> COMMIT;</span><br><span class="line">            &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">                <span class="comment">// p.commit_ts == txid的情况不存在</span></span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<h3 id="TM-的高可用设计"><a href="#TM-的高可用设计" class="headerlink" title="TM 的高可用设计"></a>TM 的高可用设计</h3><p>TODO</p>
+<blockquote>
+<p>如果读者对相关问题有兴趣，欢迎交流：<a href="mailto:llxmedici@gmail.com" target="_blank" rel="noopener">llxmedici@gmail.com</a></p>
+</blockquote>
+<h2 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h2><p>[1] Ohad Shacham, etc. 2017. Omid, Reloaded: Scalable and Highly-Available Transaction Processing .</p>
+
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/数据库/" rel="tag"># 数据库</a>
+          
+            <a href="/tags/分布式事务/" rel="tag"># 分布式事务</a>
+          
+        </div>
+      
+
+      
+      
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2020/01/30/percolator/" rel="next" title="剖析 Percolator 分布式事务设计思路">
+                <i class="fa fa-chevron-left"></i> 剖析 Percolator 分布式事务设计思路
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+
+  
+
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap">
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview-wrap">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview-wrap sidebar-panel">
+        <div class="site-overview">
+          <div class="site-author motion-element" itemprop="author" itemscope="" itemtype="http://schema.org/Person">
+            
+              <p class="site-author-name" itemprop="name">Lexun</p>
+              <p class="site-description motion-element" itemprop="description"></p>
+          </div>
+
+          <nav class="site-state motion-element">
+
+            
+              <div class="site-state-item site-state-posts">
+              
+                <a href="/archives/">
+              
+                  <span class="site-state-item-count">10</span>
+                  <span class="site-state-item-name">日志</span>
+                </a>
+              </div>
+            
+
+            
+
+            
+              
+              
+              <div class="site-state-item site-state-tags">
+                <a href="/tags/index.html">
+                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-name">标签</span>
+                </a>
+              </div>
+            
+
+          </nav>
+
+          
+
+          
+
+          
+          
+
+          
+          
+
+          
+
+        </div>
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#背景"><span class="nav-number">1.</span> <span class="nav-text">背景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#条件和约束"><span class="nav-number">2.</span> <span class="nav-text">条件和约束</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#技术点"><span class="nav-number">3.</span> <span class="nav-text">技术点</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#系统设计分析"><span class="nav-number">4.</span> <span class="nav-text">系统设计分析</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#分布式事务状态记录"><span class="nav-number">4.1.</span> <span class="nav-text">分布式事务状态记录</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#时间戳分配和不确定状态事务的处理"><span class="nav-number">4.2.</span> <span class="nav-text">时间戳分配和不确定状态事务的处理</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#关于等待粒度的思考"><span class="nav-number">4.2.1.</span> <span class="nav-text">关于等待粒度的思考</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#lock-free-并发控制"><span class="nav-number">4.3.</span> <span class="nav-text">lock-free 并发控制</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#如果-validation-的时候不加锁，能不能实现-SI-隔离级别？"><span class="nav-number">4.3.1.</span> <span class="nav-text">如果 validation 的时候不加锁，能不能实现 SI 隔离级别？</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#冲突检测"><span class="nav-number">4.3.2.</span> <span class="nav-text">冲突检测</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TM-的高可用设计"><span class="nav-number">4.4.</span> <span class="nav-text">TM 的高可用设计</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#参考资料"><span class="nav-number">5.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright">&copy; <span itemprop="copyrightYear">2020</span>
+  <span class="with-love">
+    <i class="fa fa-user"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">Lexun</span>
+
+  
+</div>
+
+
+  <div class="powered-by">由 <a class="theme-link" target="_blank" href="https://hexo.io">Hexo</a> 强力驱动</div>
+
+
+
+  <span class="post-meta-divider">|</span>
+
+
+
+  <div class="theme-info">主题 &mdash; <a class="theme-link" target="_blank" href="https://github.com/iissnan/hexo-theme-next">NexT.Muse</a> v5.1.4</div>
+
+
+
+
+        
+
+
+
+
+
+
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+  
+
+  
+  
+    <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+  
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.4"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.4"></script>
+
+
+
+  
+  
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.4"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.4"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+  
+
+  
+  
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Config({
+        tex2jax: {
+          inlineMath: [ ['$','$'], ["\\(","\\)"]  ],
+          processEscapes: true,
+          skipTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+        }
+      });
+    </script>
+
+    <script type="text/x-mathjax-config">
+      MathJax.Hub.Queue(function() {
+        var all = MathJax.Hub.getAllJax(), i;
+        for (i=0; i < all.length; i += 1) {
+          all[i].SourceElement().parentNode.className += ' has-jax';
+        }
+      });
+    </script>
+    <script type="text/javascript" src="//cdn.bootcss.com/mathjax/2.7.1/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+  
+
+
+  
+
+  
+
+</body>
+</html>
