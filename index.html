@@ -300,7 +300,11 @@
       
         
           
-          弱内存模型的 CPU 乱序问题检测方法有些 cpu 为了提高性能，引入了一些优化手段，导致指令实际执行的 “效果” 可能与程序顺序不同，具有这种内存模型的 cpu 通常被称为 ”弱内存模型“。（可以参考 ibm 的一篇文章，看一下 store buffer 和 invalid queue 怎么影响指
+          摘要： 简述弱内存模型的 CPU 乱序问题背景以及探讨一种适合生产环境中使用的检测方法
+
+转载或者引用本文内容请注明来源及原作者
+
+有些 cpu 为了提高性能，引入了一些优化手段，导致指令实际执行的 “效果” 可能与程序顺序不同，具有这种内存模型的 cpu 通常被称为 ”弱内存模型“。（可以参考 i
           ...
           <!--noindex-->
           <div class="post-button text-center">
@@ -1559,7 +1563,7 @@ Raft对multi-Paxos的简化Raft的结构和multi-paxos非常相似，同样是le
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
