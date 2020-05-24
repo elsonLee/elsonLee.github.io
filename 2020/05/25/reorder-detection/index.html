@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="摘要： 简述弱内存模型的 CPU 乱序问题背景以及探讨一种适合生产环境中使用的检测方法  转载或者引用本文内容请注明来源及原作者  有些 cpu 为了提高性能，引入了一些优化手段，导致指令实际执行的 “效果” 可能与程序顺序不同，具有这种内存模型的 cpu 通常被称为 ”弱内存模型“。同时，还有另外一些原因可能导致指令乱序的效果：  编译器对指令做重排序 cache 一致性优化引入的乱序（可参考">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-05-24T22:18:34.165Z">
+<meta property="og:updated_time" content="2020-05-24T22:20:55.949Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="弱内存模型的 CPU 乱序问题检测方法">
 <meta name="twitter:description" content="摘要： 简述弱内存模型的 CPU 乱序问题背景以及探讨一种适合生产环境中使用的检测方法  转载或者引用本文内容请注明来源及原作者  有些 cpu 为了提高性能，引入了一些优化手段，导致指令实际执行的 “效果” 可能与程序顺序不同，具有这种内存模型的 cpu 通常被称为 ”弱内存模型“。同时，还有另外一些原因可能导致指令乱序的效果：  编译器对指令做重排序 cache 一致性优化引入的乱序（可参考">
@@ -353,7 +353,10 @@
 <p>因此，解决几点问题可以在尽量小的误报率下检测出乱序问题：</p>
 <ol>
 <li>每个线程中的内存访问操作标记本地逻辑时间 epoch，并且线程记录一个向量时钟（Vector Clock）用来判断 <strong>happens-before</strong> 关系，通过锁或内存屏障时需要同步向量时钟，以时钟寻找并判断<strong>并发</strong>关系的 wr-race（Vector Clock 的原理可以参考 Lamport 论文或站内之前的文章）</li>
-<li>当寻找到某个 wr-raceA 后，查询是否存在 wr-raceB 满足：<code>wr-raceA[W].epoch &lt; wr-raceB[W].epoch &amp;&amp; wr-raceA[R].epoch &gt; wr-raceB[R].epoch</code></li>
+<li>当寻找到某个 wr-raceA 后，查询是否存在 wr-raceB 满足：<blockquote>
+<p>(wr-raceA[W].epoch &lt; wr-raceB[W].epoch) &amp;&amp; (wr-raceA[R].epoch &gt; wr-raceB[R].epoch)</p>
+</blockquote>
+</li>
 <li>判断读线程的两个读操作之间有没有依赖关系</li>
 </ol>
 <h2 id="思考题"><a href="#思考题" class="headerlink" title="思考题"></a>思考题</h2><ul>
