@@ -87,7 +87,7 @@
 <meta property="og:site_name" content="Lexun&#39;s Notes">
 <meta property="og:description" content="摘要： 简述弱内存模型的 CPU 乱序问题背景以及探讨一种适合生产环境中使用的检测方法  转载或者引用本文内容请注明来源及原作者  有些 cpu 为了提高性能，引入了一些优化手段，导致指令实际执行的 “效果” 可能与程序顺序不同，具有这种内存模型的 cpu 通常被称为 ”弱内存模型“。同时，还有另外一些原因可能导致指令乱序的效果：  编译器对指令做重排序 cache 一致性优化引入的乱序（可参考">
 <meta property="og:locale" content="zh-Hans">
-<meta property="og:updated_time" content="2020-05-24T22:20:55.949Z">
+<meta property="og:updated_time" content="2020-06-17T12:49:57.314Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="弱内存模型的 CPU 乱序问题检测方法">
 <meta name="twitter:description" content="摘要： 简述弱内存模型的 CPU 乱序问题背景以及探讨一种适合生产环境中使用的检测方法  转载或者引用本文内容请注明来源及原作者  有些 cpu 为了提高性能，引入了一些优化手段，导致指令实际执行的 “效果” 可能与程序顺序不同，具有这种内存模型的 cpu 通常被称为 ”弱内存模型“。同时，还有另外一些原因可能导致指令乱序的效果：  编译器对指令做重排序 cache 一致性优化引入的乱序（可参考">
@@ -336,36 +336,7 @@
 <p>如果使用 C++11，内存屏障语义会加在 atomic 操作上，使用时注意即可，本质上都是一样的。</p>
 <h2 id="如何检测乱序问题"><a href="#如何检测乱序问题" class="headerlink" title="如何检测乱序问题"></a>如何检测乱序问题</h2><p>假设给一个大型软件，里面就存在这种乱序问题，如何找出哪里存在问题？</p>
 <p>前面几个小节都是背景铺垫，这里才是我想讨论和解决的问题。</p>
-<p>上一节引入了内存屏障，不妨看一下不加内存屏障这些内存操作之间的关系：</p>
-<p><code>a = 123</code> 和 <code>print(a)</code>，前者写 a，后者读 a，并且在两个线程中没有加锁，熟悉多线程的就会发现这就是一个 data race，当然如果读写 a 都是原子的并没有什么问题，不过这并不影响这两个操作是并发关系，即两个操作相互没有 <strong>happens before</strong> 关系。</p>
-<p>那加了内存屏障后呢，当 <code>b = true</code> 被 T2 可见时，意味着 <code>Wb@T1</code> <strong>happens before</strong>  <code>Rb@T2</code>，又由于内存屏障的存在，保证了 T2 此时读到的 a 必然是 123，从结果上推得 <code>Wa@T1</code> <strong>happens before</strong> <code>Ra@T2</code>。看起来用 <strong>happens before</strong> 关系就能描述可见性顺序。</p>
-<p>试着用 <strong>happens before</strong> 关系去描述可见性顺序，在 <code>b = true</code> 对 T2 可见时：</p>
-<ol>
-<li>如果 <code>Wa@T1</code> 与 <code>Ra@T2</code> 之间是并发关系，那么 <code>Wa@T1</code> 是否被 T2 可见不能保证</li>
-<li>如果 <code>Wa@T1</code> <strong>happens before</strong> <code>Ra@T2</code>，那么 <code>Wa@T1</code> 能被 T2 可见</li>
-</ol>
-<p>那么寻找哪些变量的可见性顺序可能变化可以转为寻找变量的写-读是否存在并发，也就是 wr-race。</p>
-<h2 id="寻找-wr-race-中的乱序问题"><a href="#寻找-wr-race-中的乱序问题" class="headerlink" title="寻找 wr-race 中的乱序问题"></a>寻找 wr-race 中的乱序问题</h2><p>可是程序中的 wr-race 实在是太多了（原子操作也算在里面），只找 wr-race 会有许多误报：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">T1:                 T2:</span><br><span class="line">a = <span class="number">123</span>;</span><br><span class="line">c = <span class="number">234</span>;</span><br><span class="line">                    d = c;</span><br><span class="line">                    b = a;</span><br></pre></td></tr></table></figure>
-<p>单单以上程序并不存在乱序问题，虽然乱序也是存在的，但并不会影响结果，显然乱序问题只是 wr-race 中的一个子集。回顾乱序问题的原因，是因为对其它线程的内存可见性顺序发生了改变，这里至少涉及对方线程的两个内存写操作（否则不会有顺序一说）。再看 T2 两次读操作之间的关系，是需要有一定的依赖的，比如上一节代码只有当 b == true 满足时才读 a，有时候依赖也可能比较隐蔽：</p>
-<figure class="highlight c++"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">T1:                 T2:</span><br><span class="line">a[n+<span class="number">1</span>] = <span class="number">1</span>;</span><br><span class="line">n += <span class="number">1</span>;</span><br><span class="line">                    <span class="keyword">for</span> (<span class="keyword">int</span> i = <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">                        <span class="keyword">do</span>(a[i])</span><br><span class="line">                    &#125;</span><br></pre></td></tr></table></figure>
-<p>另外可以观察到一点，T1 的写顺序和 T2 的读顺序往往是相反的，这也很容易理解，因为既然 T2 的两个读操作之间是有依赖关系的，那么假设这两个读操作的顺序和 T1 写操作顺序一致，即便没有乱序发生，也不能保证第二个读看到的内存值是什么，这样的程序本身就是不合理的。</p>
-<p>因此，解决几点问题可以在尽量小的误报率下检测出乱序问题：</p>
-<ol>
-<li>每个线程中的内存访问操作标记本地逻辑时间 epoch，并且线程记录一个向量时钟（Vector Clock）用来判断 <strong>happens-before</strong> 关系，通过锁或内存屏障时需要同步向量时钟，以时钟寻找并判断<strong>并发</strong>关系的 wr-race（Vector Clock 的原理可以参考 Lamport 论文或站内之前的文章）</li>
-<li>当寻找到某个 wr-raceA 后，查询是否存在 wr-raceB 满足：<blockquote>
-<p>(wr-raceA[W].epoch &lt; wr-raceB[W].epoch) &amp;&amp; (wr-raceA[R].epoch &gt; wr-raceB[R].epoch)</p>
-</blockquote>
-</li>
-<li>判断读线程的两个读操作之间有没有依赖关系</li>
-</ol>
-<h2 id="思考题"><a href="#思考题" class="headerlink" title="思考题"></a>思考题</h2><ul>
-<li>单核多线程下会不会有乱序问题？</li>
-</ul>
-<blockquote>
-<p>如果读者对相关问题有兴趣，欢迎交流：<a href="mailto:llxmedici@gmail.com" target="_blank" rel="noopener">llxmedici@gmail.com</a></p>
-</blockquote>
-
+<h2 id="TODO"><a href="#TODO" class="headerlink" title="TODO"></a>TODO</h2>
       
     </div>
     
@@ -526,7 +497,7 @@
             
 
             
-              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#指令乱序的最小约束条件"><span class="nav-number">1.</span> <span class="nav-text">指令乱序的最小约束条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多线程下的乱序问题"><span class="nav-number">2.</span> <span class="nav-text">多线程下的乱序问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解决乱序问题"><span class="nav-number">3.</span> <span class="nav-text">解决乱序问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何检测乱序问题"><span class="nav-number">4.</span> <span class="nav-text">如何检测乱序问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#寻找-wr-race-中的乱序问题"><span class="nav-number">5.</span> <span class="nav-text">寻找 wr-race 中的乱序问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#思考题"><span class="nav-number">6.</span> <span class="nav-text">思考题</span></a></li></ol></div>
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#指令乱序的最小约束条件"><span class="nav-number">1.</span> <span class="nav-text">指令乱序的最小约束条件</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#多线程下的乱序问题"><span class="nav-number">2.</span> <span class="nav-text">多线程下的乱序问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#解决乱序问题"><span class="nav-number">3.</span> <span class="nav-text">解决乱序问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#如何检测乱序问题"><span class="nav-number">4.</span> <span class="nav-text">如何检测乱序问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#TODO"><span class="nav-number">5.</span> <span class="nav-text">TODO</span></a></li></ol></div>
             
 
           </div>
