@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>反正弦定律模拟器 - 随机游走的直觉陷阱</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root { --primary: #6366F1; --bg: #0F172A; --text: #F8FAFC; }
+        body { font-family: system-ui; background: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 1100px; }
+        .card { background: #1E293B; border-radius: 12px; padding: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        canvas { width: 100% !important; border-radius: 8px; }
+        .controls { margin-top: 20px; display: flex; gap: 10px; width: 100%; max-width: 1100px; }
+        button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-run { background: var(--primary); color: white; }
+        .btn-reset { background: #475569; color: white; }
+        h1 { margin-bottom: 5px; }
+        .desc { color: #94A3B8; margin-bottom: 20px; text-align: center; max-width: 700px; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+
+    <h1>反正弦定律模拟 (Arcsin Law)</h1>
+    <p class="desc">
+        随机游走（抛硬币）中，粒子在 0 轴一侧停留的时间占比。
+        直觉认为应该在 0.5 附近，但实验证明：<b>它更倾向于呆在两头（极度领先或极度落后）</b>。
+    </p>
+
+    <div class="grid">
+        <div class="card">
+            <h3 style="margin-top:0">当前路径模拟 (Random Walk)</h3>
+            <canvas id="walkCanvas" height="250"></canvas>
+            <div id="currentTimeLabel" style="font-size: 0.8rem; margin-top:10px; color: #94A3B8;">
+                正向时间占比: <span id="currentRatio" style="color:var(--primary); font-weight:bold">0%</span>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3 style="margin-top:0">正向时间占比分布 (U-Shape!)</h3>
+            <canvas id="distChart" height="250"></canvas>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="btn-run" onclick="runBatch(100)">运行 100 次完整游走实验</button>
+        <button class="btn-reset" onclick="resetAll()">重置</button>
+    </div>
+
+<script>
+    const walkCtx = document.getElementById('walkCanvas').getContext('2d');
+    const distCtx = document.getElementById('distChart').getContext('2d');
+
+    let statsData = new Array(20).fill(0); // 20个bin记录频率
+    const steps = 500; // 每次游走的步数
+
+    // 初始化分布图表
+    const distChart = new Chart(distCtx, {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: 20}, (_, i) => (i/20).toFixed(2)),
+            datasets: [{
+                label: '出现次数',
+                data: statsData,
+                backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: { display: false },
+                x: { title: { display: true, text: '处于正值区域的时间比例', color: '#94A3B8' } }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    function drawWalk(path) {
+        walkCtx.clearRect(0, 0, walkCtx.canvas.width, walkCtx.canvas.height);
+        walkCtx.strokeStyle = '#6366F1';
+        walkCtx.lineWidth = 2;
+
+        const scaleX = walkCtx.canvas.width / steps;
+        const scaleY = 2; // 放大波动
+
+        // 画 0 轴
+        walkCtx.setLineDash([5, 5]);
+        walkCtx.strokeStyle = '#475569';
+        walkCtx.beginPath();
+        walkCtx.moveTo(0, walkCtx.canvas.height/2);
+        walkCtx.lineTo(walkCtx.canvas.width, walkCtx.canvas.height/2);
+        walkCtx.stroke();
+        walkCtx.setLineDash([]);
+
+        // 画路径
+        walkCtx.strokeStyle = '#6366F1';
+        walkCtx.beginPath();
+        walkCtx.moveTo(0, walkCtx.canvas.height/2);
+        path.forEach((val, i) => {
+            walkCtx.lineTo(i * scaleX, walkCtx.canvas.height/2 - val * scaleY);
+        });
+        walkCtx.stroke();
+    }
+
+    function runBatch(count) {
+        for(let c = 0; c < count; c++) {
+            let position = 0;
+            let positiveTime = 0;
+            let path = [];
+
+            for(let s = 0; s < steps; s++) {
+                position += Math.random() > 0.5 ? 1 : -1;
+                path.push(position);
+                if(position > 0) positiveTime++;
+            }
+
+            const ratio = positiveTime / steps;
+            const bin = Math.min(Math.floor(ratio * 20), 19);
+            statsData[bin]++;
+
+            // 只绘制最后一次路径演示
+            if(c === count - 1) {
+                drawWalk(path);
+                document.getElementById('currentRatio').innerText = (ratio * 100).toFixed(1) + '%';
+            }
+        }
+        distChart.update();
+    }
+
+    function resetAll() {
+        statsData.fill(0);
+        distChart.update();
+        walkCtx.clearRect(0, 0, walkCtx.canvas.width, walkCtx.canvas.height);
+        document.getElementById('currentRatio').innerText = '0%';
+    }
+</script>
+</body>
+</html>
