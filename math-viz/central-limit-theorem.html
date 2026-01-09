@@ -7,12 +7,12 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary-color: #7C3AED; /* Violet */
-            --secondary-color: #10B981; /* Emerald */
-            --bg-color: #F8FAFC;
-            --card-bg: #FFFFFF;
-            --text-main: #1E293B;
-            --text-sub: #64748B;
+            --primary-color: #10B981; /* Emerald */
+            --bg-color: #0F172A;
+            --card-bg: #1E293B;
+            --text-main: #F8FAFC;
+            --text-sub: #94A3B8;
+            --border-color: #334155;
         }
 
         body {
@@ -34,7 +34,7 @@
 
         h1 {
             margin: 0 0 0.5rem 0;
-            color: #111;
+            color: var(--text-main);
         }
 
         p.subtitle {
@@ -54,12 +54,12 @@
 
         .card {
             background: var(--card-bg);
-            border-radius: 16px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 10px 15px -3px rgba(0, 0, 0, 0.05);
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            border: 1px solid #E2E8F0;
+            border: 1px solid var(--border-color);
         }
 
         /* Form Controls */
@@ -79,9 +79,14 @@
             width: 100%;
             padding: 0.5rem;
             border-radius: 6px;
-            border: 1px solid #CBD5E1;
-            background: #fff;
+            border: 1px solid var(--border-color);
+            background: #334155;
+            color: var(--text-main);
             font-size: 1rem;
+        }
+
+        select:hover, input[type="range"]:hover {
+            border-color: var(--primary-color);
         }
 
         input[type="range"] { cursor: pointer; }
@@ -126,7 +131,7 @@
 
         /* Stats */
         .stats-box {
-            background: #F1F5F9;
+            background: #334155;
             padding: 1rem;
             border-radius: 8px;
             display: grid;
@@ -149,12 +154,13 @@
             top: 10px;
             right: 10px;
             font-size: 0.8rem;
-            background: rgba(255,255,255,0.8);
+            background: rgba(30, 41, 59, 0.9);
             padding: 4px 8px;
             border-radius: 4px;
             pointer-events: none;
             font-weight: bold;
             color: var(--text-sub);
+            border: 1px solid var(--border-color);
         }
 
     </style>
