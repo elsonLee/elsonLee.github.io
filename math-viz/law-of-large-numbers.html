@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="大数定律可视化模拟 - 通过抛硬币实验展示频率的收敛性">
+    <title>大数定律可视化模拟 - 统计数学定理可视化</title>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/common.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 面包屑导航 -->
+        <nav class="breadcrumb">
+            <a href="index.html">📊 主页</a>
+            <span>›</span>
+            <span>大数定律</span>
+        </nav>
+
+        <!-- 页面标题 -->
+        <header>
+            <h1>🎲 大数定律可视化模拟</h1>
+            <p class="subtitle">
+                抛硬币实验：随着投掷次数（n）的增加，正面朝上的频率将不可避免地收敛于概率期望值。
+                观察样本频率如何围绕理论概率波动并逐渐稳定。
+            </p>
+        </header>
+
+        <!-- 两列布局 -->
+        <div class="two-column-layout">
+            <!-- 左侧：控制面板 -->
+            <aside class="card stats-panel">
+                <h3 style="margin-bottom: 16px; color: var(--text-main);">📊 统计数据</h3>
+
+                <div class="stat-item">
+                    <div class="stat-label">总投掷次数 (n)</div>
+                    <div class="stat-value" id="totalCount">0</div>
+                </div>
+
+                <div class="stat-item">
+                    <div class="stat-label">正面次数 (Heads)</div>
+                    <div class="stat-value" id="headsCount">0</div>
+                </div>
+
+                <div class="stat-item">
+                    <div class="stat-label">反面次数 (Tails)</div>
+                    <div class="stat-value" id="tailsCount">0</div>
+                </div>
+
+                <div class="stat-item">
+                    <div class="stat-label">当前频率 (Frequency)</div>
+                    <div class="stat-value" id="frequency" style="color: var(--primary-color)">0.0000</div>
+                </div>
+
+                <div class="stat-item">
+                    <div class="stat-label">偏差 (Deviation)</div>
+                    <div class="stat-value" id="deviation">0.0000</div>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 16px 0;">
+
+                <h3 style="margin-bottom: 16px; color: var(--text-main);">⚙️ 参数设置</h3>
+
+                <div class="form-group">
+                    <label for="probabilitySlider">正面概率 (P): <span id="probabilityValue">0.50</span></label>
+                    <input type="range" id="probabilitySlider" min="0.1" max="0.9" step="0.05" value="0.5">
+                    <small style="color: var(--text-sub);">调整硬币出现正面的理论概率</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="speedSelect">模拟速度</label>
+                    <select id="speedSelect">
+                        <option value="1">慢速 (1次/帧)</option>
+                        <option value="5" selected>中速 (5次/帧)</option>
+                        <option value="20">快速 (20次/帧)</option>
+                        <option value="100">极速 (100次/帧)</option>
+                    </select>
+                </div>
+
+                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 16px 0;">
+
+                <h3 style="margin-bottom: 16px; color: var(--text-main);">🎮 控制</h3>
+
+                <div class="stat-controls">
+                    <button id="startBtn" class="btn">▶️ 开始模拟</button>
+                    <button id="resetBtn" class="btn btn-secondary">🔄 重置</button>
+                    <button id="add100Btn" class="btn btn-secondary">+100 次</button>
+                    <button id="add1000Btn" class="btn btn-secondary">+1,000 次</button>
+                    <button id="add10000Btn" class="btn btn-secondary">+10,000 次</button>
+                </div>
+
+                <!-- 导出按钮 -->
+                <div id="exportButtons" style="margin-top: 16px;"></div>
+            </aside>
+
+            <!-- 右侧：图表 -->
+            <main class="card">
+                <h3 style="margin-bottom: 16px; color: var(--text-main);">📈 频率收敛图</h3>
+                <div class="chart-container">
+                    <canvas id="llnChart"></canvas>
+                </div>
+                <div style="margin-top: 16px; padding: 12px; background: var(--bg-color); border-radius: var(--radius-sm); font-size: 0.875rem; color: var(--text-sub);">
+                    <strong>💡 提示：</strong>点击"开始模拟"观看实时动画，或使用批量按钮快速添加大量数据。
+                    调整概率值可以模拟不公平的硬币，观察频率如何收敛到不同的期望值。
+                </div>
+            </main>
+        </div>
+
+        <!-- 说明部分 -->
+        <section class="card" style="margin-top: 32px;">
+            <h3 style="margin-bottom: 16px; color: var(--text-main);">📚 关于大数定律</h3>
+            <div style="color: var(--text-main); line-height: 1.8;">
+                <p><strong>大数定律（Law of Large Numbers, LLN）</strong>是概率论中的一条基本定理，描述了随机试验次数增多时，事件发生的频率会趋近于其概率。</p>
+
+                <h4 style="margin: 16px 0 8px 0; color: var(--primary-color);">数学表达：</h4>
+                <p>设 X₁, X₂, ..., Xₙ 是独立同分布的随机变量，期望值为 μ，则对于任意 ε > 0：</p>
+                <pre style="background: var(--bg-color); padding: 12px; border-radius: var(--radius-sm); overflow-x: auto; margin: 8px 0;">lim(n→∞) P(|X̄ₙ - μ| < ε) = 1</pre>
+
+                <h4 style="margin: 16px 0 8px 0; color: var(--primary-color);">直观解释：</h4>
+                <ul style="padding-left: 20px;">
+                    <li><strong>弱大数定律（辛钦定律）</strong>：样本均值依概率收敛于期望值</li>
+                    <li><strong>强大数定律（柯尔莫哥洛夫定律）</strong>：样本均值几乎必然收敛于期望值</li>
+                </ul>
+
+                <h4 style="margin: 16px 0 8px 0; color: var(--primary-color);">实际应用：</h4>
+                <ul style="padding-left: 20px;">
+                    <li>保险公司的风险评估（基于大量客户数据）</li>
+                    <li>质量控制中的抽样检验</li>
+                    <li>民意调查的样本量确定</li>
+                    <li>赌场和博彩业的盈利保证</li>
+                </ul>
+            </div>
+        </section>
+
+        <!-- 页脚 -->
+        <footer>
+            <p>© 2025 统计数学定理可视化 | <a href="index.html">返回主页</a></p>
+        </footer>
+    </div>
+
+    <!-- 加载脚本 -->
+    <script src="js/common.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/law-of-large-numbers.js"></script>
+</body>
+</html>

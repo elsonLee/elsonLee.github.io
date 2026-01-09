@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="统计数学定理可视化模拟 - 通过交互式演示理解统计学核心概念">
+    <meta name="keywords" content="统计学,数学定理,可视化,大数定律,中心极限定理,贝叶斯定理">
+    <title>统计数学定理可视化模拟</title>
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/common.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 头部 -->
+        <header>
+            <h1>📊 统计数学定理可视化模拟</h1>
+            <p class="subtitle">
+                通过交互式可视化演示，深入理解统计学中的核心定理与概念。
+                每个模拟都提供实时数据展示、参数调整和结果导出功能。
+            </p>
+        </header>
+
+        <!-- 定理卡片网格 -->
+        <main class="grid grid-3" id="theorems-grid">
+            <!-- 卡片将通过 JavaScript 动态生成 -->
+        </main>
+
+        <!-- 页脚 -->
+        <footer>
+            <p>© 2025 统计数学定理可视化 | Powered by Chart.js & Vanilla JavaScript</p>
+            <p style="margin-top: 8px;">
+                <a href="https://github.com/elsonLee/elsonLee.github.io" target="_blank" rel="noopener">
+                    GitHub 仓库
+                </a>
+            </p>
+        </footer>
+    </div>
+
+    <script>
+        // 定理元数据
+        const theorems = [
+            {
+                id: 'law-of-large-numbers',
+                title: '大数定律',
+                subtitle: 'Law of Large Numbers',
+                description: '模拟抛硬币过程，观察随着试验次数增加，样本频率如何收敛于理论概率。',
+                icon: '🎲',
+                color: '#4F46E5',
+                difficulty: '基础',
+                tags: ['概率论', '收敛性', '频率'],
+                features: ['实时模拟', '参数可调', '数据导出'],
+                status: 'completed',
+                url: 'law-of-large-numbers.html'
+            },
+            {
+                id: 'central-limit-theorem',
+                title: '中心极限定理',
+                subtitle: 'Central Limit Theorem',
+                description: '展示多个独立随机变量之和的分布如何趋近于正态分布，无论原始分布是什么形态。',
+                icon: '📈',
+                color: '#10B981',
+                difficulty: '中级',
+                tags: ['概率分布', '正态分布', '样本均值'],
+                features: ['分布可视化', '样本量调整', '对比展示'],
+                status: 'coming-soon',
+                url: null
+            },
+            {
+                id: 'normal-distribution',
+                title: '正态分布',
+                subtitle: 'Normal Distribution',
+                description: '探索高斯分布的特性，调整均值和标准差，观察分布曲线的变化。',
+                icon: '🔔',
+                color: '#3B82F6',
+                difficulty: '基础',
+                tags: ['分布函数', '均值', '标准差'],
+                features: ['参数调整', '概率计算', '区域高亮'],
+                status: 'coming-soon',
+                url: null
+            },
+            {
+                id: 'bayes-theorem',
+                title: '贝叶斯定理',
+                subtitle: 'Bayes\' Theorem',
+                description: '通过医疗诊断等实例，直观理解条件概率与先验/后验概率的关系。',
+                icon: '🔍',
+                color: '#F59E0B',
+                difficulty: '中级',
+                tags: ['条件概率', '先验概率', '后验概率'],
+                features: ['交互式案例', '概率树', '实时计算'],
+                status: 'coming-soon',
+                url: null
+            },
+            {
+                id: 'monte-carlo',
+                title: '蒙特卡洛模拟',
+                subtitle: 'Monte Carlo Simulation',
+                description: '使用随机抽样方法解决确定性问题的可视化演示，如估算π值。',
+                icon: '🎯',
+                color: '#EF4444',
+                difficulty: '中级',
+                tags: ['随机模拟', '数值计算', '概率估计'],
+                features: ['π值估算', '积分计算', '误差分析'],
+                status: 'coming-soon',
+                url: null
+            },
+            {
+                id: 'binomial-distribution',
+                title: '二项分布',
+                subtitle: 'Binomial Distribution',
+                description: '可视化n次独立伯努利试验中成功次数的概率分布。',
+                icon: '📊',
+                color: '#8B5CF6',
+                difficulty: '基础',
+                tags: ['离散分布', '伯努利试验', '概率质量函数'],
+                features: ['分布图', '累积概率', '参数调整'],
+                status: 'coming-soon',
+                url: null
+            }
+        ];
+
+        // 渲染定理卡片
+        function renderTheoremCards() {
+            const grid = document.getElementById('theorems-grid');
+            grid.innerHTML = '';
+
+            theorems.forEach(theorem => {
+                const card = createTheoremCard(theorem);
+                grid.appendChild(card);
+            });
+        }
+
+        // 创建单个定理卡片
+        function createTheoremCard(theorem) {
+            const card = document.createElement('article');
+            card.className = 'card theorem-card';
+
+            const isClickable = theorem.status === 'completed';
+
+            card.innerHTML = `
+                <div class="theorem-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                    <span class="theorem-icon" style="font-size: 48px;">${theorem.icon}</span>
+                    <div>
+                        <h2 style="font-size: 1.25rem; margin: 0; color: ${theorem.color};">${theorem.title}</h2>
+                        <p style="font-size: 0.875rem; color: var(--text-sub); margin: 4px 0 0 0;">${theorem.subtitle}</p>
+                    </div>
+                </div>
+
+                <p class="theorem-description" style="color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">
+                    ${theorem.description}
+                </p>
+
+                <div class="theorem-tags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                    ${theorem.tags.map(tag => `<span class="tag" style="background: var(--primary-light); color: var(--primary-color); padding: 4px 12px; border-radius: 12px; font-size: 0.75rem;">${tag}</span>`).join('')}
+                </div>
+
+                <div class="theorem-meta" style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-color);">
+                    <div class="difficulty" style="font-size: 0.875rem; color: var(--text-sub);">
+                        <span style="margin-right: 16px;">📚 难度: ${theorem.difficulty}</span>
+                    </div>
+                    ${theorem.status === 'completed'
+                        ? `<a href="${theorem.url}" class="btn" style="text-decoration: none;">开始模拟 →</a>`
+                        : `<span class="btn btn-secondary" style="cursor: not-allowed; opacity: 0.6;">🚧 敬请期待</span>`
+                    }
+                </div>
+            `;
+
+            // 添加悬停效果
+            if (isClickable) {
+                card.style.cursor = 'pointer';
+                card.addEventListener('click', (e) => {
+                    // 如果点击的不是按钮，也进行跳转
+                    if (!e.target.closest('a')) {
+                        window.location.href = theorem.url;
+                    }
+                });
+            }
+
+            return card;
+        }
+
+        // 页面加载完成后渲染
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTheoremCards();
+        });
+    </script>
+
+    <style>
+        /* 定理卡片特定样式 */
+        .theorem-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .theorem-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .theorem-icon {
+            display: inline-block;
+            transition: transform 0.3s ease;
+        }
+
+        .theorem-card:hover .theorem-icon {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .tag {
+            display: inline-block;
+            transition: transform 0.2s ease;
+        }
+
+        .tag:hover {
+            transform: scale(1.05);
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 1.5rem;
+            }
+
+            .grid-3 {
+                grid-template-columns: 1fr;
+            }
+
+            .theorem-header {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .theorem-tags {
+                justify-content: center;
+            }
+        }
+    </style>
+</body>
+</html>
