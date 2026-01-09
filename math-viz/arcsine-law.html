@@ -10,10 +10,14 @@
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 1100px; }
         .card { background: #1E293B; border-radius: 12px; padding: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
         canvas { width: 100% !important; border-radius: 8px; }
-        .controls { margin-top: 20px; display: flex; gap: 10px; width: 100%; max-width: 1100px; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-run { background: var(--primary); color: white; }
+        .controls { margin-top: 20px; display: flex; gap: 10px; align-items: center; width: 100%; max-width: 1100px; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-run { background: var(--primary); color: white; flex: 1; }
         .btn-reset { background: #475569; color: white; }
+        select { padding: 12px; border-radius: 8px; border: 2px solid #475569; background: #1E293B; color: #F8FAFC; font-size: 14px; cursor: pointer; }
+        select:hover { border-color: var(--primary); }
+        .control-group { display: flex; gap: 10px; align-items: center; }
+        .control-label { color: #94A3B8; font-size: 14px; }
         h1 { margin-bottom: 5px; }
         .desc { color: #94A3B8; margin-bottom: 20px; text-align: center; max-width: 700px; font-size: 0.9rem; }
     </style>
@@ -42,7 +46,16 @@
     </div>
 
     <div class="controls">
-        <button class="btn-run" onclick="runBatch(100)">运行 100 次完整游走实验</button>
+        <div class="control-group">
+            <span class="control-label">模拟次数:</span>
+            <select id="batchSize" onchange="updateButtonText()">
+                <option value="100">100 次</option>
+                <option value="200">200 次</option>
+                <option value="500">500 次</option>
+                <option value="1000">1000 次</option>
+            </select>
+        </div>
+        <button class="btn-run" id="runBtn" onclick="runSelectedBatch()">运行 100 次完整游走实验</button>
         <button class="btn-reset" onclick="resetAll()">重置</button>
     </div>
 
@@ -100,6 +113,16 @@
             walkCtx.lineTo(i * scaleX, walkCtx.canvas.height/2 - val * scaleY);
         });
         walkCtx.stroke();
+    }
+
+    function updateButtonText() {
+        const batchSize = document.getElementById('batchSize').value;
+        document.getElementById('runBtn').innerText = `运行 ${batchSize} 次完整游走实验`;
+    }
+
+    function runSelectedBatch() {
+        const batchSize = parseInt(document.getElementById('batchSize').value);
+        runBatch(batchSize);
     }
 
     function runBatch(count) {
