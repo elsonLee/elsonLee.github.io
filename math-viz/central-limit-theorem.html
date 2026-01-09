@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>中心极限定理 - 统计数学定理可视化</title>
+    <meta name="description" content="通过交互式模拟深入理解中心极限定理：无论原始分布如何，样本均值的分布都会趋近于正态分布">
+    <link rel="stylesheet" href="css/variables.css">
+    <link rel="stylesheet" href="css/common.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- 面包屑导航 -->
+        <nav class="breadcrumb">
+            <a href="index.html">← 返回定理列表</a>
+        </nav>
+
+        <!-- 页面标题 -->
+        <header>
+            <h1>📈 中心极限定理</h1>
+            <p class="subtitle">
+                Central Limit Theorem (CLT) - 统计学中最神奇的定理之一。<br>
+                <strong>无论原始分布是什么形态</strong>，只要样本量足够大，样本均值的分布都会趋近于<strong>正态分布</strong>。
+            </p>
+        </header>
+
+        <!-- 核心内容区 -->
+        <div class="content-layout">
+            <!-- 左侧控制面板 -->
+            <aside class="control-panel">
+                <!-- 参数设置 -->
+                <section class="control-section">
+                    <h2>🎛️ 参数设置</h2>
+
+                    <div class="control-group">
+                        <label for="distSelect">
+                            原始分布类型
+                            <span class="value-hint" id="distDesc">均匀分布</span>
+                        </label>
+                        <select id="distSelect" onchange="simulation.changeDistribution()">
+                            <option value="uniform">均匀分布 (Uniform)</option>
+                            <option value="exponential">指数分布 (Exponential) - 严重偏斜</option>
+                            <option value="bimodal">双峰分布 (Bimodal) - 两极分化</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="sampleSize">
+                            样本量 (N)
+                            <span class="value-display" id="sampleSizeValue">30</span>
+                        </label>
+                        <input type="range"
+                               id="sampleSize"
+                               min="1"
+                               max="100"
+                               value="30"
+                               oninput="simulation.updateSampleSize(this.value)">
+                        <small class="help-text">
+                            💡 对于偏斜或双峰分布，需要更大的 N 才能看到完美的钟形曲线
+                        </small>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="speedControl">
+                            模拟速度
+                            <span class="value-display" id="speedValue">50</span>
+                        </label>
+                        <input type="range"
+                               id="speedControl"
+                               min="1"
+                               max="200"
+                               value="50"
+                               oninput="simulation.updateSpeed(this.value)">
+                    </div>
+                </section>
+
+                <!-- 统计数据 -->
+                <section class="stats-section">
+                    <h2>📊 实时统计</h2>
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <span class="stat-label">模拟次数</span>
+                            <span class="stat-value" id="simCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">最新均值</span>
+                            <span class="stat-value" id="currentMean">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">均值均值</span>
+                            <span class="stat-value" id="meanOfMeans">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">标准误差</span>
+                            <span class="stat-value" id="stdError">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 控制按钮 -->
+                <section class="control-section">
+                    <div class="btn-group">
+                        <button id="startBtn" class="btn btn-primary" onclick="simulation.toggle()">
+                            ▶ 开始模拟
+                        </button>
+                        <button class="btn btn-secondary" onclick="simulation.reset()">
+                            🔄 重置
+                        </button>
+                        <button class="btn btn-secondary" onclick="simulation.step()">
+                            ⏭ 单步执行
+                        </button>
+                    </div>
+                </section>
+
+                <!-- 导出功能 -->
+                <section class="control-section">
+                    <h2>💾 导出数据</h2>
+                    <div class="btn-group">
+                        <button class="btn btn-outline" onclick="exportTools.exportChart('cltChart', '中心极限定理-样本均值分布')">
+                            📊 导出图表
+                        </button>
+                        <button class="btn btn-outline" onclick="exportTools.exportData('clt', '中心极限定理-模拟数据')">
+                            📁 导出数据
+                        </button>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- 右侧可视化区域 -->
+            <main class="visualization">
+                <!-- 总体分布 -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>原始分布 (Population Distribution)</h3>
+                        <p class="chart-description">这是我们从总体中抽取单个样本的分布形状</p>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="popChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 样本均值分布 -->
+                <div class="chart-container">
+                    <div class="chart-header">
+                        <h3>样本均值分布 (Sampling Distribution of Means)</h3>
+                        <p class="chart-description">随着模拟次数增加，观察这个分布如何逐渐变成钟形</p>
+                    </div>
+                    <div class="chart-wrapper">
+                        <canvas id="cltChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- 理论说明 -->
+                <div class="info-card">
+                    <h3>💡 中心极限定理核心要点</h3>
+                    <ul>
+                        <li><strong>独立性</strong>: 样本必须相互独立</li>
+                        <li><strong>样本量</strong>: 通常 N ≥ 30 就能看到效果</li>
+                        <li><strong>形状</strong>: 样本均值分布 ≈ 正态分布</li>
+                        <li><strong>参数</strong>:
+                            <ul>
+                                <li>μ<sub>x̄</sub> = μ (总体均值)</li>
+                                <li>σ<sub>x̄</sub> = σ/√n (标准误差)</li>
+                            </ul>
+                        </li>
+                    </ul>
+                    <p class="example">
+                        <strong>实际应用</strong>: 这是为什么质量控制、民意调查、A/B测试等都使用正态分布的基础！
+                    </p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- 加载脚本 -->
+    <script src="js/common.js"></script>
+    <script src="js/export.js"></script>
+    <script src="js/clt.js"></script>
+</body>
+</html>
