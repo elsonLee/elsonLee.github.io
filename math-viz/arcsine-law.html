@@ -5,75 +5,122 @@
     <title>反正弦定律模拟器 - 随机游走的直觉陷阱</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #6366F1; --bg: #0F172A; --text: #F8FAFC; }
-        body { font-family: system-ui; background: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 1100px; }
-        .card { background: #1E293B; border-radius: 12px; padding: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        :root { --primary: #6366F1; --secondary: #F59E0B; --bg: #0F172A; --card: #1E293B; --text: #F8FAFC; }
+        body { font-family: system-ui; background: var(--bg); color: var(--text); padding: 20px; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        .container { width: 100%; max-width: 1200px; }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
         canvas { width: 100% !important; border-radius: 8px; }
-        .controls { margin-top: 20px; display: flex; gap: 10px; align-items: center; width: 100%; max-width: 1100px; }
+        .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-run { background: var(--primary); color: white; flex: 1; }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-secondary { background: var(--secondary); color: #000; }
         .btn-reset { background: #475569; color: white; }
-        select { padding: 12px; border-radius: 8px; border: 2px solid #475569; background: #1E293B; color: #F8FAFC; font-size: 14px; cursor: pointer; }
+        select { padding: 10px; border-radius: 8px; border: 2px solid #475569; background: var(--card); color: var(--text); font-size: 14px; cursor: pointer; }
         select:hover { border-color: var(--primary); }
-        .control-group { display: flex; gap: 10px; align-items: center; }
+        .control-group { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
         .control-label { color: #94A3B8; font-size: 14px; }
-        h1 { margin-bottom: 5px; }
-        .desc { color: #94A3B8; margin-bottom: 20px; text-align: center; max-width: 700px; font-size: 0.9rem; }
+        h1 { margin-bottom: 10px; }
+        .desc { color: #94A3B8; text-align: center; max-width: 800px; margin: 0 auto 30px; line-height: 1.6; }
+        h2 { color: var(--primary); margin-top: 0; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        h3 { margin-top: 0; font-size: 1.1rem; }
+        .highlight { color: var(--primary); font-weight: bold; }
+        .highlight-2 { color: var(--secondary); font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <h1>反正弦定律模拟 (Arcsin Law)</h1>
-    <p class="desc">
-        随机游走（抛硬币）中，粒子在 0 轴一侧停留的时间占比。
-        直觉认为应该在 0.5 附近，但实验证明：<b>它更倾向于呆在两头（极度领先或极度落后）</b>。
-    </p>
+    <div class="container">
+        <h1>🎲 反正弦定律模拟 (Arcsin Law)</h1>
+        <p class="desc">
+            反正弦定律揭示了随机游走中的反直觉现象：粒子更倾向于极端状态而非平衡状态。<br>
+            下面展示两种表现形式，都呈现<b class="highlight">U型分布</b>。
+        </p>
 
-    <div class="grid">
+        <!-- 模拟一：正向时间占比 -->
         <div class="card">
-            <h3 style="margin-top:0">当前路径模拟 (Random Walk)</h3>
-            <canvas id="walkCanvas" height="250"></canvas>
-            <div id="currentTimeLabel" style="font-size: 0.8rem; margin-top:10px; color: #94A3B8;">
-                正向时间占比: <span id="currentRatio" style="color:var(--primary); font-weight:bold">0%</span>
+            <h2>📊 模拟一：正向时间占比分布</h2>
+            <p class="desc" style="text-align: left; max-width: 100%; margin: 0 0 20px 0;">
+                统计粒子在<b class="highlight">0轴上方</b>停留的时间占比。直觉应该在50%附近，但实际呈现U型分布。
+            </p>
+
+            <div class="grid-2">
+                <div>
+                    <h3>当前路径模拟 (Random Walk)</h3>
+                    <canvas id="walkCanvas" height="250"></canvas>
+                    <div style="font-size: 0.85rem; margin-top:10px; color: #94A3B8;">
+                        正向时间占比: <span id="currentRatio" style="color:var(--primary); font-weight:bold">0%</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>正向时间占比分布</h3>
+                    <canvas id="distChart" height="250"></canvas>
+                </div>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <span class="control-label">模拟次数:</span>
+                    <select id="batchSize1" onchange="updateButtonText1()">
+                        <option value="100">100 次</option>
+                        <option value="200">200 次</option>
+                        <option value="500">500 次</option>
+                        <option value="1000">1000 次</option>
+                    </select>
+                </div>
+                <button class="btn-primary" id="runBtn1" onclick="runBatch1()">运行 100 次实验</button>
+                <button class="btn-reset" onclick="reset1()">重置</button>
             </div>
         </div>
 
+        <!-- 模拟二：最后回归点 -->
         <div class="card">
-            <h3 style="margin-top:0">正向时间占比分布 (U-Shape!)</h3>
-            <canvas id="distChart" height="250"></canvas>
-        </div>
-    </div>
+            <h2 style="color: var(--secondary); border-bottom-color: var(--secondary);">🎯 模拟二：最后回归点分布</h2>
+            <p class="desc" style="text-align: left; max-width: 100%; margin: 0 0 20px 0;">
+                统计随机游走<b class="highlight-2">最后一次碰到0轴</b>的时间点。贝叶斯视角：路径一旦离开0轴太久，回归的"似然性"就变得极低。
+            </p>
 
-    <div class="controls">
-        <div class="control-group">
-            <span class="control-label">模拟次数:</span>
-            <select id="batchSize" onchange="updateButtonText()">
-                <option value="100">100 次</option>
-                <option value="200">200 次</option>
-                <option value="500">500 次</option>
-                <option value="1000">1000 次</option>
-            </select>
+            <div>
+                <h3>最后一次回到0的时刻分布</h3>
+                <canvas id="lastZeroChart" height="300"></canvas>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <span class="control-label">模拟次数:</span>
+                    <select id="batchSize2" onchange="updateButtonText2()">
+                        <option value="100">100 次</option>
+                        <option value="200">200 次</option>
+                        <option value="500">500 次</option>
+                        <option value="1000">1000 次</option>
+                    </select>
+                </div>
+                <button class="btn-secondary" id="runBtn2" onclick="runBatch2()">运行 100 次实验</button>
+                <button class="btn-reset" onclick="reset2()">重置</button>
+            </div>
+
+            <p class="desc" style="text-align: left; max-width: 100%; margin-top: 20px;">
+                <b>观察要点：</b>绝大多数路径在很早（比如前10%时间）后就<b>再也没有回到过0点</b>；或者直到快结束时才最后一次触碰0点。这正是反正弦定律的另一种表现！
+            </p>
         </div>
-        <button class="btn-run" id="runBtn" onclick="runSelectedBatch()">运行 100 次完整游走实验</button>
-        <button class="btn-reset" onclick="resetAll()">重置</button>
     </div>
 
 <script>
+    // ==================== 模拟一：正向时间占比 ====================
     const walkCtx = document.getElementById('walkCanvas').getContext('2d');
     const distCtx = document.getElementById('distChart').getContext('2d');
 
-    let statsData = new Array(20).fill(0); // 20个bin记录频率
-    const steps = 500; // 每次游走的步数
+    let statsData1 = new Array(20).fill(0);
+    const steps1 = 500;
 
-    // 初始化分布图表
     const distChart = new Chart(distCtx, {
         type: 'bar',
         data: {
             labels: Array.from({length: 20}, (_, i) => (i/20).toFixed(2)),
             datasets: [{
                 label: '出现次数',
-                data: statsData,
+                data: statsData1,
                 backgroundColor: 'rgba(99, 102, 241, 0.8)',
                 borderRadius: 4
             }]
@@ -90,11 +137,8 @@
 
     function drawWalk(path) {
         walkCtx.clearRect(0, 0, walkCtx.canvas.width, walkCtx.canvas.height);
-        walkCtx.strokeStyle = '#6366F1';
-        walkCtx.lineWidth = 2;
-
-        const scaleX = walkCtx.canvas.width / steps;
-        const scaleY = 2; // 放大波动
+        const scaleX = walkCtx.canvas.width / steps1;
+        const scaleY = 2;
 
         // 画 0 轴
         walkCtx.setLineDash([5, 5]);
@@ -107,6 +151,7 @@
 
         // 画路径
         walkCtx.strokeStyle = '#6366F1';
+        walkCtx.lineWidth = 2;
         walkCtx.beginPath();
         walkCtx.moveTo(0, walkCtx.canvas.height/2);
         path.forEach((val, i) => {
@@ -115,34 +160,29 @@
         walkCtx.stroke();
     }
 
-    function updateButtonText() {
-        const batchSize = document.getElementById('batchSize').value;
-        document.getElementById('runBtn').innerText = `运行 ${batchSize} 次完整游走实验`;
+    function updateButtonText1() {
+        const batchSize = document.getElementById('batchSize1').value;
+        document.getElementById('runBtn1').innerText = `运行 ${batchSize} 次实验`;
     }
 
-    function runSelectedBatch() {
-        const batchSize = parseInt(document.getElementById('batchSize').value);
-        runBatch(batchSize);
-    }
-
-    function runBatch(count) {
-        for(let c = 0; c < count; c++) {
+    function runBatch1() {
+        const batchSize = parseInt(document.getElementById('batchSize1').value);
+        for(let c = 0; c < batchSize; c++) {
             let position = 0;
             let positiveTime = 0;
             let path = [];
 
-            for(let s = 0; s < steps; s++) {
+            for(let s = 0; s < steps1; s++) {
                 position += Math.random() > 0.5 ? 1 : -1;
                 path.push(position);
                 if(position > 0) positiveTime++;
             }
 
-            const ratio = positiveTime / steps;
+            const ratio = positiveTime / steps1;
             const bin = Math.min(Math.floor(ratio * 20), 19);
-            statsData[bin]++;
+            statsData1[bin]++;
 
-            // 只绘制最后一次路径演示
-            if(c === count - 1) {
+            if(c === batchSize - 1) {
                 drawWalk(path);
                 document.getElementById('currentRatio').innerText = (ratio * 100).toFixed(1) + '%';
             }
@@ -150,11 +190,64 @@
         distChart.update();
     }
 
-    function resetAll() {
-        statsData.fill(0);
+    function reset1() {
+        statsData1.fill(0);
         distChart.update();
         walkCtx.clearRect(0, 0, walkCtx.canvas.width, walkCtx.canvas.height);
         document.getElementById('currentRatio').innerText = '0%';
+    }
+
+    // ==================== 模拟二：最后回归点 ====================
+    const lastZeroCtx = document.getElementById('lastZeroChart').getContext('2d');
+    const binCount2 = 30;
+    let statsData2 = new Array(binCount2).fill(0);
+    const steps2 = 1000;
+
+    const lastZeroChart = new Chart(lastZeroCtx, {
+        type: 'bar',
+        data: {
+            labels: Array.from({length: binCount2}, (_, i) => (i/binCount2).toFixed(2)),
+            datasets: [{
+                label: '最后回归时刻出现的频次',
+                data: statsData2,
+                backgroundColor: '#F59E0B',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { title: { display: true, text: '最后一次回到0的时间点 (0=开始, 1=结束)', color: '#9CA3AF' } },
+                y: { display: false }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    function updateButtonText2() {
+        const batchSize = document.getElementById('batchSize2').value;
+        document.getElementById('runBtn2').innerText = `运行 ${batchSize} 次实验`;
+    }
+
+    function runBatch2() {
+        const batchSize = parseInt(document.getElementById('batchSize2').value);
+        for(let i = 0; i < batchSize; i++) {
+            let pos = 0;
+            let lastZero = 0;
+            for(let s = 1; s <= steps2; s++) {
+                pos += Math.random() > 0.5 ? 1 : -1;
+                if(pos === 0) lastZero = s;
+            }
+            let ratio = lastZero / steps2;
+            let bin = Math.min(Math.floor(ratio * binCount2), binCount2 - 1);
+            statsData2[bin]++;
+        }
+        lastZeroChart.update();
+    }
+
+    function reset2() {
+        statsData2.fill(0);
+        lastZeroChart.update();
     }
 </script>
 </body>
