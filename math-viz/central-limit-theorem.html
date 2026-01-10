@@ -44,6 +44,11 @@
             margin-bottom: 20px;
         }
 
+        .canvas-container {
+            position: relative;
+            width: 100%;
+        }
+
         canvas {
             width: 100% !important;
             border-radius: 8px;
@@ -184,7 +189,9 @@
             <div class="grid-2">
                 <div style="display: flex; flex-direction: column;">
                     <h3>总体分布 (Population)</h3>
-                    <canvas id="popChart" height="250"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="popChart" height="250"></canvas>
+                    </div>
                     <p style="font-size: 0.8rem; margin-top: 10px; color: var(--text-sub);">
                         这是从总体中抽取单个样本的分布形状
                     </p>
@@ -192,7 +199,9 @@
 
                 <div style="display: flex; flex-direction: column;">
                     <h3>样本均值分布 (Sampling Distribution)</h3>
-                    <canvas id="cltChart" height="250"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="cltChart" height="250"></canvas>
+                    </div>
                     <p style="font-size: 0.8rem; margin-top: 10px; color: var(--text-sub);">
                         随着模拟次数增加，观察钟形曲线的形成
                     </p>
