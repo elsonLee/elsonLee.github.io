@@ -10,6 +10,7 @@
         .container { width: 100%; max-width: 1200px; }
         .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+        .canvas-container { position: relative; width: 100%; }
         canvas { width: 100% !important; border-radius: 8px; }
         .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
@@ -47,7 +48,9 @@
             <div class="grid-2">
                 <div>
                     <h3>当前路径模拟 (Random Walk)</h3>
-                    <canvas id="walkCanvas" height="250"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="walkCanvas" height="250"></canvas>
+                    </div>
                     <div style="font-size: 0.85rem; margin-top:10px; color: #94A3B8;">
                         正向时间占比: <span id="currentRatio" style="color:var(--primary); font-weight:bold">0%</span>
                     </div>
@@ -55,7 +58,9 @@
 
                 <div>
                     <h3>正向时间占比分布</h3>
-                    <canvas id="distChart" height="250"></canvas>
+                    <div class="canvas-container">
+                        <canvas id="distChart" height="250"></canvas>
+                    </div>
                 </div>
             </div>
 
@@ -83,7 +88,9 @@
 
             <div>
                 <h3>最后一次回到0的时刻分布</h3>
-                <canvas id="lastZeroChart" height="300"></canvas>
+                <div class="canvas-container">
+                    <canvas id="lastZeroChart" height="300"></canvas>
+                </div>
             </div>
 
             <div class="controls">
@@ -127,6 +134,7 @@
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 y: { display: false },
                 x: { title: { display: true, text: '处于正值区域的时间比例', color: '#94A3B8' } }
@@ -216,6 +224,7 @@
         },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             scales: {
                 x: { title: { display: true, text: '最后一次回到0的时间点 (0=开始, 1=结束)', color: '#9CA3AF' } },
                 y: { display: false }
