@@ -6,11 +6,11 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         :root {
-            --primary: #4F46E5; /* Indigo */
-            --bg: #0F172A;
-            --card: #1E293B;
-            --text: #F8FAFC;
-            --text-sub: #94A3B8;
+            --primary: #222;
+            --bg: #fff;
+            --card: #f9f9f9;
+            --text: #222;
+            --text-sub: #555;
         }
 
         body {
@@ -34,7 +34,7 @@
             border-radius: 12px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .grid-2 {
@@ -76,7 +76,7 @@
         }
 
         .btn-secondary {
-            background: #475569;
+            background: #999;
             color: white;
         }
 
@@ -88,8 +88,8 @@
         select, input[type="range"] {
             padding: 10px;
             border-radius: 8px;
-            border: 2px solid #475569;
-            background: var(--card);
+            border: 1px solid #ddd;
+            background: #fff;
             color: var(--text);
             font-size: 14px;
             cursor: pointer;
@@ -140,7 +140,8 @@
         }
 
         .stats-box {
-            background: #334155;
+            background: #fff;
+            border: 1px solid #e0e0e0;
             padding: 1rem;
             border-radius: 8px;
             display: grid;
@@ -268,7 +269,7 @@
 
                 <h3 style="color: var(--primary); margin-top: 20px;">数学表达：</h3>
                 <p>设 X₁, X₂, ..., Xₙ 是独立同分布的随机变量，期望值为 μ，则对于任意 ε > 0：</p>
-                <pre style="background: #0F172A; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; border: 1px solid #334155;">lim(n→∞) P(|X̄ₙ - μ| < ε) = 1</pre>
+                <pre style="background: #f5f5f5; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; border: 1px solid #e0e0e0;">lim(n→∞) P(|X̄ₙ - μ| < ε) = 1</pre>
 
                 <h3 style="color: var(--primary); margin-top: 20px;">两种形式：</h3>
                 <ul style="padding-left: 20px;">

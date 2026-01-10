@@ -1,9 +1,9 @@
-/* CSS 变量定义 */
+/* CSS 变量定义 - 黑白灰主题 */
 :root {
     /* 主色调 */
-    --primary-color: #4F46E5;
-    --primary-hover: #4338CA;
-    --primary-light: rgba(79, 70, 229, 0.1);
+    --primary-color: #222;
+    --primary-hover: #000;
+    --primary-light: rgba(34, 34, 34, 0.05);
 
     /* 辅助色 */
     --success-color: #10B981;
@@ -12,23 +12,23 @@
     --info-color: #3B82F6;
 
     /* 背景色 */
-    --bg-color: #F3F4F6;
-    --card-bg: #FFFFFF;
-    --input-bg: #FFFFFF;
+    --bg-color: #fff;
+    --card-bg: #f9f9f9;
+    --input-bg: #fff;
 
     /* 文字颜色 */
-    --text-main: #1F2937;
-    --text-sub: #6B7280;
-    --text-light: #9CA3AF;
+    --text-main: #222;
+    --text-sub: #555;
+    --text-light: #999;
 
     /* 边框颜色 */
-    --border-color: #E5E7EB;
+    --border-color: #e0e0e0;
     --border-focus: var(--primary-color);
 
     /* 阴影 */
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 4px 8px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
 
     /* 圆角 */
     --radius-sm: 6px;

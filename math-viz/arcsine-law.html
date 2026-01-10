@@ -5,24 +5,31 @@
     <title>反正弦定律模拟器 - 随机游走的直觉陷阱</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --primary: #6366F1; --secondary: #F59E0B; --bg: #0F172A; --card: #1E293B; --text: #F8FAFC; }
+        :root {
+            --primary: #222;
+            --secondary: #666;
+            --bg: #fff;
+            --card: #f9f9f9;
+            --text: #222;
+            --text-sub: #555;
+        }
         body { font-family: system-ui; background: var(--bg); color: var(--text); padding: 20px; margin: 0; display: flex; flex-direction: column; align-items: center; }
         .container { width: 100%; max-width: 1200px; }
-        .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        .card { background: var(--card); border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
         .canvas-container { position: relative; width: 100%; }
         canvas { width: 100% !important; border-radius: 8px; }
         .controls { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         button { padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; }
         .btn-primary { background: var(--primary); color: white; }
-        .btn-secondary { background: var(--secondary); color: #000; }
-        .btn-reset { background: #475569; color: white; }
-        select { padding: 10px; border-radius: 8px; border: 2px solid #475569; background: var(--card); color: var(--text); font-size: 14px; cursor: pointer; }
+        .btn-secondary { background: #999; color: white; }
+        .btn-reset { background: #999; color: white; }
+        select { padding: 10px; border-radius: 8px; border: 1px solid #ddd; background: #fff; color: var(--text); font-size: 14px; cursor: pointer; }
         select:hover { border-color: var(--primary); }
         .control-group { display: flex; gap: 10px; align-items: center; margin-bottom: 15px; }
-        .control-label { color: #94A3B8; font-size: 14px; }
+        .control-label { color: #555; font-size: 14px; }
         h1 { margin-bottom: 10px; }
-        .desc { color: #94A3B8; text-align: center; max-width: 800px; margin: 0 auto 30px; line-height: 1.6; }
+        .desc { color: #555; text-align: center; max-width: 800px; margin: 0 auto 30px; line-height: 1.6; }
         h2 { color: var(--primary); margin-top: 0; border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
         h3 { margin-top: 0; font-size: 1.1rem; }
         .highlight { color: var(--primary); font-weight: bold; }
@@ -51,7 +58,7 @@
                     <div class="canvas-container">
                         <canvas id="walkCanvas" height="250"></canvas>
                     </div>
-                    <div style="font-size: 0.85rem; margin-top:10px; color: #94A3B8;">
+                    <div style="font-size: 0.85rem; margin-top:10px; color: #555;">
                         正向时间占比: <span id="currentRatio" style="color:var(--primary); font-weight:bold">0%</span>
                     </div>
                 </div>
