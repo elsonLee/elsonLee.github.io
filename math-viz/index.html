@@ -151,12 +151,9 @@
             const isClickable = theorem.status === 'completed';
 
             card.innerHTML = `
-                <div class="theorem-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
-                    <span class="theorem-icon" style="font-size: 48px;">${theorem.icon}</span>
-                    <div>
-                        <h2 style="font-size: 1.25rem; margin: 0; color: ${theorem.color};">${theorem.title}</h2>
-                        <p style="font-size: 0.875rem; color: var(--text-sub); margin: 4px 0 0 0;">${theorem.subtitle}</p>
-                    </div>
+                <div class="theorem-header" style="margin-bottom: 16px;">
+                    <h2 style="font-size: 1.25rem; margin: 0; color: ${theorem.color};">${theorem.title}</h2>
+                    <p style="font-size: 0.875rem; color: var(--text-sub); margin: 4px 0 0 0;">${theorem.subtitle}</p>
                 </div>
 
                 <p class="theorem-description" style="color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">
@@ -167,22 +164,21 @@
                     ${theorem.tags.map(tag => `<span class="tag" style="background: var(--primary-light); color: var(--primary-color); padding: 4px 12px; border-radius: 12px; font-size: 0.75rem;">${tag}</span>`).join('')}
                 </div>
 
-                <div class="theorem-meta" style="display: flex; justify-content: space-between; align-items: center; padding-top: 16px; border-top: 1px solid var(--border-color);">
-                    <div class="difficulty" style="font-size: 0.875rem; color: var(--text-sub);">
-                        <span style="margin-right: 16px;">📚 难度: ${theorem.difficulty}</span>
-                    </div>
-                    ${theorem.status === 'completed'
-                        ? `<a href="${theorem.url}" class="btn" style="text-decoration: none;">开始模拟 →</a>`
-                        : `<span class="btn btn-secondary" style="cursor: not-allowed; opacity: 0.6;">🚧 敬请期待</span>`
-                    }
-                </div>
+                ${theorem.status === 'completed'
+                    ? `<div style="padding-top: 16px; border-top: 1px solid var(--border-color);">
+                        <a href="${theorem.url}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">查看模拟 →</a>
+                       </div>`
+                    : `<div style="padding-top: 16px; border-top: 1px solid var(--border-color);">
+                        <span style="color: var(--text-light); font-size: 0.875rem;">🚧 敬请期待</span>
+                       </div>`
+                }
             `;
 
             // 添加悬停效果
             if (isClickable) {
                 card.style.cursor = 'pointer';
                 card.addEventListener('click', (e) => {
-                    // 如果点击的不是按钮，也进行跳转
+                    // 如果点击的不是链接，也进行跳转
                     if (!e.target.closest('a')) {
                         window.location.href = theorem.url;
                     }
@@ -210,15 +206,6 @@
             box-shadow: var(--shadow-lg);
         }
 
-        .theorem-icon {
-            display: inline-block;
-            transition: transform 0.3s ease;
-        }
-
-        .theorem-card:hover .theorem-icon {
-            transform: scale(1.1) rotate(5deg);
-        }
-
         .tag {
             display: inline-block;
             transition: transform 0.2s ease;
@@ -236,11 +223,6 @@
 
             .grid-3 {
                 grid-template-columns: 1fr;
-            }
-
-            .theorem-header {
-                flex-direction: column;
-                text-align: center;
             }
 
             .theorem-tags {
