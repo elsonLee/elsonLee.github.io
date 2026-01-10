@@ -151,38 +151,29 @@
             const isClickable = theorem.status === 'completed';
 
             card.innerHTML = `
-                <div class="theorem-header" style="margin-bottom: 16px;">
+                <div class="theorem-header" style="margin-bottom: 12px;">
                     <h2 style="font-size: 1.25rem; margin: 0; color: ${theorem.color};">${theorem.title}</h2>
                     <p style="font-size: 0.875rem; color: var(--text-sub); margin: 4px 0 0 0;">${theorem.subtitle}</p>
                 </div>
 
-                <p class="theorem-description" style="color: var(--text-main); line-height: 1.6; margin-bottom: 16px;">
+                <p class="theorem-description" style="color: var(--text-main); line-height: 1.6; margin-bottom: 12px;">
                     ${theorem.description}
                 </p>
 
-                <div class="theorem-tags" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;">
+                <div class="theorem-tags" style="display: flex; flex-wrap: wrap; gap: 8px;">
                     ${theorem.tags.map(tag => `<span class="tag" style="background: var(--primary-light); color: var(--primary-color); padding: 4px 12px; border-radius: 12px; font-size: 0.75rem;">${tag}</span>`).join('')}
                 </div>
-
-                ${theorem.status === 'completed'
-                    ? `<div style="padding-top: 16px; border-top: 1px solid var(--border-color);">
-                        <a href="${theorem.url}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">查看模拟 →</a>
-                       </div>`
-                    : `<div style="padding-top: 16px; border-top: 1px solid var(--border-color);">
-                        <span style="color: var(--text-light); font-size: 0.875rem;">🚧 敬请期待</span>
-                       </div>`
-                }
             `;
 
             // 添加悬停效果
             if (isClickable) {
                 card.style.cursor = 'pointer';
-                card.addEventListener('click', (e) => {
-                    // 如果点击的不是链接，也进行跳转
-                    if (!e.target.closest('a')) {
-                        window.location.href = theorem.url;
-                    }
+                card.addEventListener('click', () => {
+                    window.location.href = theorem.url;
                 });
+            } else {
+                card.style.cursor = 'not-allowed';
+                card.style.opacity = '0.6';
             }
 
             return card;
