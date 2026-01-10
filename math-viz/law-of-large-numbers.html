@@ -2,74 +2,247 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="大数定律可视化模拟 - 通过抛硬币实验展示频率的收敛性">
-    <title>大数定律可视化模拟 - 统计数学定理可视化</title>
-    <link rel="stylesheet" href="css/variables.css">
-    <link rel="stylesheet" href="css/common.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <title>大数定律模拟 - Law of Large Numbers</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #4F46E5; /* Indigo */
+            --bg: #0F172A;
+            --card: #1E293B;
+            --text: #F8FAFC;
+            --text-sub: #94A3B8;
+        }
+
+        body {
+            font-family: system-ui;
+            background: var(--bg);
+            color: var(--text);
+            padding: 20px;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .canvas-container {
+            position: relative;
+            width: 100%;
+        }
+
+        canvas {
+            width: 100% !important;
+            border-radius: 8px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #475569;
+            color: white;
+        }
+
+        .btn-danger {
+            background: #EF4444;
+            color: white;
+        }
+
+        select, input[type="range"] {
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #475569;
+            background: var(--card);
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        select:hover, input[type="range"]:hover {
+            border-color: var(--primary);
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+
+        .control-label {
+            color: var(--text-sub);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .desc {
+            color: var(--text-sub);
+            text-align: center;
+            max-width: 800px;
+            margin: 0 auto 30px;
+            line-height: 1.6;
+        }
+
+        h2 {
+            color: var(--primary);
+            margin-top: 0;
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 10px;
+        }
+
+        h3 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+        }
+
+        .stats-box {
+            background: #334155;
+            padding: 1rem;
+            border-radius: 8px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .stat-item small {
+            display: block;
+            color: var(--text-sub);
+            font-size: 0.75rem;
+            margin-bottom: 2px;
+        }
+
+        .stat-item strong {
+            font-size: 1.25rem;
+            color: var(--text);
+        }
+
+        .value-display {
+            float: right;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+        }
+
+        .help-text {
+            font-size: 0.75rem;
+            color: var(--text-sub);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+    </style>
 </head>
 <body>
+
     <div class="container">
-        <!-- 面包屑导航 -->
-        <nav class="breadcrumb">
-            <a href="index.html">📊 主页</a>
-            <span>›</span>
-            <span>大数定律</span>
-        </nav>
+        <h1>🎲 大数定律 (Law of Large Numbers)</h1>
+        <p class="desc">
+            模拟抛硬币实验，观察随着试验次数增加，样本频率如何收敛于理论概率。<br>
+            这是概率论中最基本的定理之一，揭示了频率稳定性。
+        </p>
 
-        <!-- 页面标题 -->
-        <header>
-            <h1>🎲 大数定律可视化模拟</h1>
-            <p class="subtitle">
-                抛硬币实验：随着投掷次数（n）的增加，正面朝上的频率将不可避免地收敛于概率期望值。
-                观察样本频率如何围绕理论概率波动并逐渐稳定。
+        <div class="card">
+            <h2>频率收敛模拟</h2>
+            <p class="desc" style="text-align: left; max-width: 100%; margin: 0 0 20px 0;">
+                观察正面朝上的频率如何随着投掷次数增加而逐渐收敛于理论概率。
             </p>
-        </header>
 
-        <!-- 两列布局 -->
-        <div class="two-column-layout">
-            <!-- 左侧：控制面板 -->
-            <aside class="card stats-panel">
-                <h3 style="margin-bottom: 16px; color: var(--text-main);">📊 统计数据</h3>
-
-                <div class="stat-item">
-                    <div class="stat-label">总投掷次数 (n)</div>
-                    <div class="stat-value" id="totalCount">0</div>
+            <div class="grid-2">
+                <div class="full-width">
+                    <h3>频率收敛曲线</h3>
+                    <div class="canvas-container">
+                        <canvas id="llnChart" height="300"></canvas>
+                    </div>
                 </div>
+            </div>
 
+            <div class="stats-box">
                 <div class="stat-item">
-                    <div class="stat-label">正面次数 (Heads)</div>
-                    <div class="stat-value" id="headsCount">0</div>
+                    <small>总投掷次数</small>
+                    <strong id="totalCount">0</strong>
                 </div>
-
                 <div class="stat-item">
-                    <div class="stat-label">反面次数 (Tails)</div>
-                    <div class="stat-value" id="tailsCount">0</div>
+                    <small>正面次数</small>
+                    <strong id="headsCount">0</strong>
                 </div>
-
                 <div class="stat-item">
-                    <div class="stat-label">当前频率 (Frequency)</div>
-                    <div class="stat-value" id="frequency" style="color: var(--primary-color)">0.0000</div>
+                    <small>反面次数</small>
+                    <strong id="tailsCount">0</strong>
                 </div>
-
                 <div class="stat-item">
-                    <div class="stat-label">偏差 (Deviation)</div>
-                    <div class="stat-value" id="deviation">0.0000</div>
+                    <small>当前频率</small>
+                    <strong id="frequency">0.0000</strong>
                 </div>
+                <div class="stat-item">
+                    <small>理论概率</small>
+                    <strong id="theoreticalProb">0.5000</strong>
+                </div>
+                <div class="stat-item">
+                    <small>绝对偏差</small>
+                    <strong id="deviation">0.0000</strong>
+                </div>
+            </div>
 
-                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 16px 0;">
-
-                <h3 style="margin-bottom: 16px; color: var(--text-main);">⚙️ 参数设置</h3>
-
-                <div class="form-group">
-                    <label for="probabilitySlider">正面概率 (P): <span id="probabilityValue">0.50</span></label>
+            <div class="controls" style="margin-bottom: 20px;">
+                <div class="control-group">
+                    <label class="control-label">
+                        正面概率 (P)
+                        <span id="probabilityValue" class="value-display">0.50</span>
+                    </label>
                     <input type="range" id="probabilitySlider" min="0.1" max="0.9" step="0.05" value="0.5">
-                    <small style="color: var(--text-sub);">调整硬币出现正面的理论概率</small>
+                    <small class="help-text">调整硬币出现正面的理论概率</small>
                 </div>
 
-                <div class="form-group">
-                    <label for="speedSelect">模拟速度</label>
+                <div class="control-group">
+                    <label class="control-label">模拟速度</label>
                     <select id="speedSelect">
                         <option value="1">慢速 (1次/帧)</option>
                         <option value="5" selected>中速 (5次/帧)</option>
@@ -77,53 +250,33 @@
                         <option value="100">极速 (100次/帧)</option>
                     </select>
                 </div>
+            </div>
 
-                <hr style="border: none; border-top: 1px solid var(--border-color); margin: 16px 0;">
-
-                <h3 style="margin-bottom: 16px; color: var(--text-main);">🎮 控制</h3>
-
-                <div class="stat-controls">
-                    <button id="startBtn" class="btn">▶️ 开始模拟</button>
-                    <button id="resetBtn" class="btn btn-secondary">🔄 重置</button>
-                    <button id="add100Btn" class="btn btn-secondary">+100 次</button>
-                    <button id="add1000Btn" class="btn btn-secondary">+1,000 次</button>
-                    <button id="add10000Btn" class="btn btn-secondary">+10,000 次</button>
-                </div>
-
-                <!-- 导出按钮 -->
-                <div id="exportButtons" style="margin-top: 16px;"></div>
-            </aside>
-
-            <!-- 右侧：图表 -->
-            <main class="card">
-                <h3 style="margin-bottom: 16px; color: var(--text-main);">📈 频率收敛图</h3>
-                <div class="chart-container">
-                    <canvas id="llnChart"></canvas>
-                </div>
-                <div style="margin-top: 16px; padding: 12px; background: var(--bg-color); border-radius: var(--radius-sm); font-size: 0.875rem; color: var(--text-sub);">
-                    <strong>💡 提示：</strong>点击"开始模拟"观看实时动画，或使用批量按钮快速添加大量数据。
-                    调整概率值可以模拟不公平的硬币，观察频率如何收敛到不同的期望值。
-                </div>
-            </main>
+            <div class="controls">
+                <button class="btn-primary" id="startBtn" onclick="toggleSimulation()">▶ 开始模拟</button>
+                <button class="btn-secondary" onclick="flipBatch(100)">+100 次</button>
+                <button class="btn-secondary" onclick="flipBatch(1000)">+1,000 次</button>
+                <button class="btn-secondary" onclick="flipBatch(10000)">+10,000 次</button>
+                <button class="btn-secondary" onclick="resetSimulation()">🔄 重置</button>
+            </div>
         </div>
 
-        <!-- 说明部分 -->
-        <section class="card" style="margin-top: 32px;">
-            <h3 style="margin-bottom: 16px; color: var(--text-main);">📚 关于大数定律</h3>
-            <div style="color: var(--text-main); line-height: 1.8;">
+        <div class="card">
+            <h2>📚 关于大数定律</h2>
+            <div style="color: var(--text); line-height: 1.8;">
                 <p><strong>大数定律（Law of Large Numbers, LLN）</strong>是概率论中的一条基本定理，描述了随机试验次数增多时，事件发生的频率会趋近于其概率。</p>
 
-                <h4 style="margin: 16px 0 8px 0; color: var(--primary-color);">数学表达：</h4>
+                <h3 style="color: var(--primary); margin-top: 20px;">数学表达：</h3>
                 <p>设 X₁, X₂, ..., Xₙ 是独立同分布的随机变量，期望值为 μ，则对于任意 ε > 0：</p>
-                <pre style="background: var(--bg-color); padding: 12px; border-radius: var(--radius-sm); overflow-x: auto; margin: 8px 0;">lim(n→∞) P(|X̄ₙ - μ| < ε) = 1</pre>
+                <pre style="background: #0F172A; padding: 12px; border-radius: 8px; overflow-x: auto; margin: 8px 0; border: 1px solid #334155;">lim(n→∞) P(|X̄ₙ - μ| < ε) = 1</pre>
 
-                <h4 style="margin: 16px 0 8px 0; color: var(--primary-color);">直观解释：</h4>
+                <h3 style="color: var(--primary); margin-top: 20px;">两种形式：</h3>
                 <ul style="padding-left: 20px;">
                     <li><strong>弱大数定律（辛钦定律）</strong>：样本均值依概率收敛于期望值</li>
                     <li><strong>强大数定律（柯尔莫哥洛夫定律）</strong>：样本均值几乎必然收敛于期望值</li>
                 </ul>
 
-                <h4 style="margin: 16px 0 8px 0; color: var(--primary-color);">实际应用：</h4>
+                <h3 style="color: var(--primary); margin-top: 20px;">实际应用：</h3>
                 <ul style="padding-left: 20px;">
                     <li>保险公司的风险评估（基于大量客户数据）</li>
                     <li>质量控制中的抽样检验</li>
@@ -131,17 +284,232 @@
                     <li>赌场和博彩业的盈利保证</li>
                 </ul>
             </div>
-        </section>
-
-        <!-- 页脚 -->
-        <footer>
-            <p>© 2025 统计数学定理可视化 | <a href="index.html">返回主页</a></p>
-        </footer>
+        </div>
     </div>
 
-    <!-- 加载脚本 -->
-    <script src="js/common.js"></script>
-    <script src="js/export.js"></script>
-    <script src="js/law-of-large-numbers.js"></script>
+<script>
+    // --- 配置与状态 ---
+    const simulation = {
+        total: 0,
+        heads: 0,
+        tails: 0,
+        probability: 0.5,
+        isRunning: false,
+        speed: 5,
+        animationId: null,
+        chart: null,
+        maxDataPoints: 500,
+        sampleInterval: 1
+    };
+
+    // --- Chart.js 初始化 ---
+    const ctx = document.getElementById('llnChart').getContext('2d');
+    simulation.chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                {
+                    label: '正面频率',
+                    data: [],
+                    borderColor: '#4F46E5',
+                    backgroundColor: 'rgba(79, 70, 229, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: '理论概率',
+                    data: [],
+                    borderColor: '#10B981',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 0 },
+            scales: {
+                x: {
+                    display: true,
+                    title: {display: true, text: '投掷次数 (n)', color: '#94A3B8'},
+                    ticks: { maxTicksLimit: 10, color: '#94A3B8' }
+                },
+                y: {
+                    display: true,
+                    title: {display: true, text: '频率 (P)', color: '#94A3B8'},
+                    min: 0,
+                    max: 1,
+                    ticks: { color: '#94A3B8' }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        usePointStyle: true,
+                        padding: 15,
+                        color: '#F8FAFC'
+                    }
+                }
+            }
+        }
+    });
+
+    // --- 核心逻辑 ---
+
+    function adjustSamplingStrategy() {
+        if (simulation.total < 100) {
+            simulation.sampleInterval = 1;
+        } else if (simulation.total < 1000) {
+            simulation.sampleInterval = 5;
+        } else if (simulation.total < 10000) {
+            simulation.sampleInterval = 50;
+        } else if (simulation.total < 100000) {
+            simulation.sampleInterval = 500;
+        } else {
+            simulation.sampleInterval = 5000;
+        }
+    }
+
+    function flipCoin() {
+        simulation.total++;
+        if (Math.random() < simulation.probability) {
+            simulation.heads++;
+        } else {
+            simulation.tails++;
+        }
+    }
+
+    function flipBatch(count) {
+        for (let i = 0; i < count; i++) {
+            flipCoin();
+        }
+        updateUI();
+        updateChart();
+    }
+
+    function updateChart() {
+        const freq = simulation.total === 0 ? 0 : simulation.heads / simulation.total;
+        adjustSamplingStrategy();
+
+        if (simulation.total % simulation.sampleInterval === 0) {
+            simulation.chart.data.labels.push(simulation.total);
+            simulation.chart.data.datasets[0].data.push(freq);
+            simulation.chart.data.datasets[1].data.push(simulation.probability);
+        }
+
+        if (simulation.chart.data.labels.length > simulation.maxDataPoints) {
+            simulation.chart.data.labels.shift();
+            simulation.chart.data.datasets[0].data.shift();
+            simulation.chart.data.datasets[1].data.shift();
+        }
+
+        simulation.chart.update('none');
+    }
+
+    function updateUI() {
+        const freq = simulation.total === 0 ? 0 : simulation.heads / simulation.total;
+        const deviation = Math.abs(freq - simulation.probability);
+
+        document.getElementById('totalCount').textContent = simulation.total.toLocaleString();
+        document.getElementById('headsCount').textContent = simulation.heads.toLocaleString();
+        document.getElementById('tailsCount').textContent = simulation.tails.toLocaleString();
+        document.getElementById('frequency').textContent = freq.toFixed(4);
+        document.getElementById('deviation').textContent = deviation.toFixed(4);
+
+        // 根据偏差改变颜色
+        const deviationElement = document.getElementById('deviation');
+        if (deviation < 0.01) {
+            deviationElement.style.color = '#10B981';
+        } else if (deviation < 0.05) {
+            deviationElement.style.color = '#F59E0B';
+        } else {
+            deviationElement.style.color = '#EF4444';
+        }
+    }
+
+    function animate() {
+        if (!simulation.isRunning) return;
+
+        for (let i = 0; i < simulation.speed; i++) {
+            flipCoin();
+        }
+
+        updateUI();
+        updateChart();
+        simulation.animationId = requestAnimationFrame(animate);
+    }
+
+    function toggleSimulation() {
+        const btn = document.getElementById('startBtn');
+        if (simulation.isRunning) {
+            simulation.isRunning = false;
+            btn.textContent = '▶ 继续模拟';
+            btn.classList.remove('btn-danger');
+            cancelAnimationFrame(simulation.animationId);
+        } else {
+            simulation.isRunning = true;
+            btn.textContent = '⏸ 暂停模拟';
+            btn.classList.add('btn-danger');
+            animate();
+        }
+    }
+
+    function resetSimulation() {
+        simulation.isRunning = false;
+        if (simulation.animationId) {
+            cancelAnimationFrame(simulation.animationId);
+        }
+
+        simulation.total = 0;
+        simulation.heads = 0;
+        simulation.tails = 0;
+
+        simulation.chart.data.labels = [];
+        simulation.chart.data.datasets[0].data = [];
+        simulation.chart.data.datasets[1].data = [];
+        simulation.chart.update();
+
+        document.getElementById('startBtn').textContent = '▶ 开始模拟';
+        document.getElementById('startBtn').classList.remove('btn-danger');
+        updateUI();
+    }
+
+    function updateProbability(value) {
+        simulation.probability = parseFloat(value);
+        document.getElementById('probabilityValue').textContent = simulation.probability.toFixed(2);
+        document.getElementById('theoreticalProb').textContent = simulation.probability.toFixed(4);
+
+        if (simulation.chart.data.datasets[1].data.length > 0) {
+            simulation.chart.data.datasets[1].data = simulation.chart.data.datasets[1].data.map(() => simulation.probability);
+            simulation.chart.update('none');
+        }
+    }
+
+    function updateSpeed(value) {
+        simulation.speed = parseInt(value);
+    }
+
+    // --- 事件绑定 ---
+    document.getElementById('probabilitySlider').addEventListener('input', (e) => {
+        updateProbability(e.target.value);
+    });
+
+    document.getElementById('speedSelect').addEventListener('change', (e) => {
+        updateSpeed(e.target.value);
+    });
+
+    // 初始化UI
+    updateUI();
+</script>
 </body>
 </html>
