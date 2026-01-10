@@ -131,7 +131,176 @@ function flipCoin() {
 - 加载状态指示（如需要）
 - 颜色编码（如偏差值: 绿/橙/红）
 
-### 6. 响应式设计
+### 6. 统一布局格式规范
+
+**所有新定理页面必须采用统一的卡片式暗色主题布局**，参考反正弦定律和中心极限定理的实现。
+
+#### 6.1 页面整体结构
+
+```
+<div class="container">
+    <h1>📊 定理标题</h1>
+    <p class="desc">定理描述...</p>
+
+    <div class="card">
+        <h2>模拟标题</h2>
+        <p class="desc">模拟说明...</p>
+
+        <!-- 上部：图表区域 -->
+        <div class="grid-2">
+            <div>
+                <h3>图表1标题</h3>
+                <div class="canvas-container">
+                    <canvas id="chart1" height="250"></canvas>
+                </div>
+                <p>图表说明</p>
+            </div>
+            <div>
+                <h3>图表2标题</h3>
+                <div class="canvas-container">
+                    <canvas id="chart2" height="250"></canvas>
+                </div>
+                <p>图表说明</p>
+            </div>
+        </div>
+
+        <!-- 下部：控制区域 -->
+        <div class="controls">
+            <div class="control-group">
+                <label class="control-label">参数标签</label>
+                <select>...</select>
+            </div>
+            <button class="btn-primary">操作按钮</button>
+            <button class="btn-reset">重置</button>
+        </div>
+    </div>
+</div>
+```
+
+#### 6.2 必须使用的 CSS 样式
+
+```css
+:root {
+    --primary: #10B981;        /* 主色调（可根据定理调整） */
+    --bg: #0F172A;             /* 页面背景色 */
+    --card: #1E293B;           /* 卡片背景色 */
+    --text: #F8FAFC;           /* 主文本颜色 */
+    --text-sub: #94A3B8;       /* 次要文本颜色 */
+}
+
+body {
+    font-family: system-ui;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+}
+
+.card {
+    background: var(--card);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3);
+}
+
+.grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* ⚠️ 关键：Canvas 容器必须这样设置，防止图表高度无限增长 */
+.canvas-container {
+    position: relative;
+    width: 100%;
+}
+
+canvas {
+    width: 100% !important;
+    border-radius: 8px;
+}
+
+.controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.control-label {
+    color: var(--text-sub);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+```
+
+#### 6.3 Chart.js 必须配置
+
+```javascript
+const chart = new Chart(ctx, {
+    type: 'bar',  // 或 'line'
+    data: { /* ... */ },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,  // ⚠️ 必须设置为 false
+        animation: { duration: 0 },   // 性能优化
+        // ... 其他配置
+    }
+});
+```
+
+#### 6.4 布局要点
+
+1. **单卡片容器**：整个模拟在一个 `.card` 内
+2. **上部分图表**：使用 `.grid-2` 实现两列布局，图表并排显示
+3. **下部分控制**：使用 `.controls` 横向排列控制元素
+4. **Canvas 容器**：必须使用 `.canvas-container` 包裹 canvas 元素
+5. **避免 Flex**：`.grid-2` 内的 div **不要**使用 `display: flex; flex-direction: column;`，会导致 canvas 高度问题
+6. **暗色主题**：统一使用 `--bg: #0F172A` 和 `--card: #1E293B`
+7. **响应式**：在移动端自动切换为单列布局
+
+#### 6.5 常见错误
+
+❌ **错误做法**：
+```html
+<div class="grid-2">
+    <div style="display: flex; flex-direction: column;">  <!-- ❌ 会导致高度问题 -->
+        <canvas></canvas>
+    </div>
+</div>
+```
+
+✅ **正确做法**：
+```html
+<div class="grid-2">
+    <div>
+        <div class="canvas-container">  <!-- ✅ 使用 canvas-container -->
+            <canvas height="250"></canvas>
+        </div>
+    </div>
+</div>
+```
+
+### 7. 响应式设计
 
 **断点**:
 - 移动端: < 768px
@@ -143,7 +312,7 @@ function flipCoin() {
 - 移动: 单列布局，图表自适应高度
 - 触摸友好的按钮尺寸（最小 44x44px）
 
-### 7. 可维护性要求
+### 8. 可维护性要求
 
 **模块化设计**:
 - 工具函数放在 `common.js`
@@ -160,7 +329,7 @@ function flipCoin() {
 - 复杂逻辑需要行内注释说明
 - 数学公式需要注释解释
 
-### 8. 导出功能规范
+### 9. 导出功能规范
 
 **必须实现的导出选项**:
 1. 📊 导出图表为 PNG 图片
@@ -173,7 +342,7 @@ function flipCoin() {
 - 清晰的表头
 - 合理的数据格式化
 
-### 9. 状态管理规范
+### 10. 状态管理规范
 
 **需要持久化的状态**:
 - 模拟器核心数据（总数、成功数等）
@@ -185,7 +354,7 @@ function flipCoin() {
 - 页面卸载前自动保存
 - 提供恢复确认对话框
 
-### 10. 测试与验证
+### 11. 测试与验证
 
 **功能测试清单**:
 - [ ] 所有按钮正常工作
@@ -201,7 +370,7 @@ function flipCoin() {
 - [ ] 动画流畅（60fps）
 - [ ] 内存使用合理
 
-### 11. 文档要求
+### 12. 文档要求
 
 **代码内文档**:
 - 函数注释（JSDoc）
@@ -213,7 +382,7 @@ function flipCoin() {
 - 使用方法更新
 - 技术实现说明
 
-### 12. Git 提交规范
+### 13. Git 提交规范
 
 **Commit 消息格式**:
 ```
