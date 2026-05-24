@@ -152,6 +152,25 @@
             outline: none;
         }
 
+        .probability-label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 2px;
+        }
+
+        .probability-value {
+            color: var(--text);
+            font-size: 14px;
+            font-weight: 750;
+        }
+
+        .probability-input {
+            width: 100%;
+            accent-color: #222222;
+        }
+
         .status {
             min-height: 20px;
             color: var(--text-sub);
@@ -230,6 +249,20 @@
                         aria-label="输入多个英文字母提高随机概率"
                         placeholder="ABC"
                     >
+                    <label class="letter-label probability-label" for="boostProbabilityInput">
+                        高频概率
+                        <span class="probability-value" id="boostProbabilityValue">70%</span>
+                    </label>
+                    <input
+                        class="probability-input"
+                        id="boostProbabilityInput"
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value="70"
+                        aria-label="高频字母出现概率"
+                    >
                 </form>
                 <div class="status" id="status" aria-live="polite"></div>
             </div>
@@ -244,9 +277,10 @@
         const letterInput = document.getElementById('letterInput');
         const boostForm = document.getElementById('boostForm');
         const boostInput = document.getElementById('boostInput');
+        const boostProbabilityInput = document.getElementById('boostProbabilityInput');
+        const boostProbabilityValue = document.getElementById('boostProbabilityValue');
         const status = document.getElementById('status');
         const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-        const boostedPickProbability = 0.7;
         const colors = [
             '#E11D48',
             '#DB2777',
@@ -279,6 +313,7 @@
          */
         function createRandomLetter() {
             const boostedLetters = getBoostedLetters();
+            const boostedPickProbability = getBoostedPickProbability();
             const shouldUseBoostedLetters = boostedLetters.length > 0 && Math.random() < boostedPickProbability;
             const sourceLetters = shouldUseBoostedLetters ? boostedLetters : letters;
             const letter = sample(sourceLetters);
@@ -292,6 +327,14 @@
         function getBoostedLetters() {
             const onlyLetters = boostInput.value.toUpperCase().match(/[A-Z]/g) || [];
             return Array.from(new Set(onlyLetters));
+        }
+
+        /**
+         * Returns the boosted pick probability as a decimal.
+         * @returns {number}
+         */
+        function getBoostedPickProbability() {
+            return Number(boostProbabilityInput.value) / 100;
         }
 
         /**
@@ -340,6 +383,13 @@
          */
         function sanitizeBoostedLetters() {
             boostInput.value = getBoostedLetters().join('');
+        }
+
+        /**
+         * Updates the visible boosted probability value.
+         */
+        function updateBoostProbabilityLabel() {
+            boostProbabilityValue.textContent = `${boostProbabilityInput.value}%`;
         }
 
         /**
@@ -406,6 +456,7 @@
         nextButton.addEventListener('click', randomizeLetter);
         letterInput.addEventListener('input', renderSpecifiedLetter);
         boostInput.addEventListener('input', sanitizeBoostedLetters);
+        boostProbabilityInput.addEventListener('input', updateBoostProbabilityLabel);
         letterForm.addEventListener('submit', event => event.preventDefault());
         boostForm.addEventListener('submit', event => event.preventDefault());
         window.addEventListener('resize', resizeCanvas);
