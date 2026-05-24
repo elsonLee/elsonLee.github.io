@@ -216,6 +216,21 @@
                         placeholder="输入 A-Z"
                     >
                 </form>
+                <form class="letter-form" id="boostForm">
+                    <label class="letter-label" for="boostInput">高频字母</label>
+                    <input
+                        class="letter-input"
+                        id="boostInput"
+                        type="text"
+                        inputmode="text"
+                        maxlength="26"
+                        autocomplete="off"
+                        autocapitalize="off"
+                        spellcheck="false"
+                        aria-label="输入多个英文字母提高随机概率"
+                        placeholder="ABC"
+                    >
+                </form>
                 <div class="status" id="status" aria-live="polite"></div>
             </div>
         </section>
@@ -227,8 +242,11 @@
         const nextButton = document.getElementById('nextButton');
         const letterForm = document.getElementById('letterForm');
         const letterInput = document.getElementById('letterInput');
+        const boostForm = document.getElementById('boostForm');
+        const boostInput = document.getElementById('boostInput');
         const status = document.getElementById('status');
         const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        const boostedPickProbability = 0.7;
         const colors = [
             '#E11D48',
             '#DB2777',
@@ -260,8 +278,20 @@
          * @returns {string}
          */
         function createRandomLetter() {
-            const letter = sample(letters);
+            const boostedLetters = getBoostedLetters();
+            const shouldUseBoostedLetters = boostedLetters.length > 0 && Math.random() < boostedPickProbability;
+            const sourceLetters = shouldUseBoostedLetters ? boostedLetters : letters;
+            const letter = sample(sourceLetters);
             return Math.random() < 0.5 ? letter : letter.toLowerCase();
+        }
+
+        /**
+         * Returns the sanitized boosted letter list as unique uppercase letters.
+         * @returns {Array<string>}
+         */
+        function getBoostedLetters() {
+            const onlyLetters = boostInput.value.toUpperCase().match(/[A-Z]/g) || [];
+            return Array.from(new Set(onlyLetters));
         }
 
         /**
@@ -303,6 +333,13 @@
 
             letterInput.value = matchedLetter[0];
             setLetter(matchedLetter[0], '指定图片');
+        }
+
+        /**
+         * Keeps the boosted letter input limited to unique English letters.
+         */
+        function sanitizeBoostedLetters() {
+            boostInput.value = getBoostedLetters().join('');
         }
 
         /**
@@ -368,7 +405,9 @@
 
         nextButton.addEventListener('click', randomizeLetter);
         letterInput.addEventListener('input', renderSpecifiedLetter);
+        boostInput.addEventListener('input', sanitizeBoostedLetters);
         letterForm.addEventListener('submit', event => event.preventDefault());
+        boostForm.addEventListener('submit', event => event.preventDefault());
         window.addEventListener('resize', resizeCanvas);
 
         if ('ResizeObserver' in window) {
