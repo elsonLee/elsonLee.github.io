@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="随机展示英文字母，大小写和颜色均随机，使用 Canvas 渲染为图片。">
+    <title>随机字母展示</title>
+    <style>
+        :root {
+            --bg: #f5f5f5;
+            --panel: #ffffff;
+            --text: #222222;
+            --text-sub: #666666;
+            --border: #dddddd;
+            --shadow: 0 16px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            min-height: 100%;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            overflow-x: hidden;
+        }
+
+        .app {
+            width: 100%;
+            max-width: 430px;
+            min-height: 100svh;
+            margin: 0 auto;
+            padding: max(16px, env(safe-area-inset-top)) 0 max(20px, env(safe-area-inset-bottom));
+        }
+
+        .phone-stage {
+            width: auto;
+            margin: 0 24px;
+            min-height: calc(100svh - max(16px, env(safe-area-inset-top)) - max(20px, env(safe-area-inset-bottom)));
+            display: grid;
+            grid-template-rows: auto minmax(0, 48svh) 1fr;
+            gap: 16px;
+        }
+
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 42px;
+        }
+
+        .back-link {
+            color: var(--text-sub);
+            font-size: 14px;
+            font-weight: 650;
+            text-decoration: none;
+        }
+
+        .back-link:hover {
+            color: var(--text);
+        }
+
+        h1 {
+            flex: 1 1 auto;
+            margin: 0;
+            font-size: 18px;
+            line-height: 1.2;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .image-panel {
+            min-height: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .action-bar {
+            align-self: start;
+            display: grid;
+            gap: 8px;
+            padding-top: 18px;
+            padding-bottom: 2px;
+        }
+
+        .next-button {
+            width: 100%;
+            min-height: 56px;
+            border: 0;
+            border-radius: 8px;
+            background: #222222;
+            color: #ffffff;
+            font-size: 17px;
+            font-weight: 750;
+            cursor: pointer;
+            transition: transform 0.16s ease, opacity 0.16s ease;
+        }
+
+        .next-button:hover {
+            opacity: 0.92;
+        }
+
+        .next-button:active {
+            transform: translateY(1px);
+        }
+
+        .status {
+            min-height: 20px;
+            color: var(--text-sub);
+            font-size: 13px;
+            line-height: 1.4;
+            text-align: center;
+        }
+
+        @media (max-height: 620px) {
+            .phone-stage {
+                gap: 10px;
+                grid-template-rows: auto minmax(0, 45svh) 1fr;
+            }
+
+            .topbar {
+                min-height: 34px;
+            }
+
+            h1 {
+                font-size: 16px;
+            }
+
+            .next-button {
+                min-height: 48px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .phone-stage {
+                margin: 0 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main class="app">
+        <section class="phone-stage" aria-label="随机字母图片展示">
+            <div class="topbar">
+                <a class="back-link" href="index.html">返回首页</a>
+                <h1>随机字母</h1>
+            </div>
+
+            <div class="image-panel">
+                <canvas id="letterCanvas" aria-label="随机字母图片"></canvas>
+            </div>
+
+            <div class="action-bar">
+                <button class="next-button" id="nextButton" type="button">下一个字母</button>
+                <div class="status" id="status" aria-live="polite"></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const canvas = document.getElementById('letterCanvas');
+        const context = canvas.getContext('2d');
+        const nextButton = document.getElementById('nextButton');
+        const status = document.getElementById('status');
+        const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+        const colors = [
+            '#E11D48',
+            '#DB2777',
+            '#7C3AED',
+            '#2563EB',
+            '#0891B2',
+            '#059669',
+            '#65A30D',
+            '#D97706',
+            '#DC2626',
+            '#111827'
+        ];
+
+        let currentLetter = '';
+        let currentColor = colors[0];
+        let lastRenderedValue = '';
+
+        /**
+         * Returns a random item from an array.
+         * @param {Array<string>} items
+         * @returns {string}
+         */
+        function sample(items) {
+            return items[Math.floor(Math.random() * items.length)];
+        }
+
+        /**
+         * Generates a random alphabet character with random letter case.
+         * @returns {string}
+         */
+        function createRandomLetter() {
+            const letter = sample(letters);
+            return Math.random() < 0.5 ? letter : letter.toLowerCase();
+        }
+
+        /**
+         * Generates a new visual state, avoiding the exact previous character when possible.
+         */
+        function randomizeLetter() {
+            let nextLetter = createRandomLetter();
+
+            while (nextLetter === currentLetter && letters.length > 1) {
+                nextLetter = createRandomLetter();
+            }
+
+            currentLetter = nextLetter;
+            currentColor = sample(colors);
+            drawLetter();
+        }
+
+        /**
+         * Sizes the canvas for high-density screens and redraws the current letter.
+         */
+        function resizeCanvas() {
+            const rect = canvas.getBoundingClientRect();
+            const pixelRatio = window.devicePixelRatio || 1;
+            const width = Math.max(1, Math.round(rect.width * pixelRatio));
+            const height = Math.max(1, Math.round(rect.height * pixelRatio));
+
+            if (canvas.width !== width || canvas.height !== height) {
+                canvas.width = width;
+                canvas.height = height;
+            }
+
+            drawLetter();
+        }
+
+        /**
+         * Draws the current letter onto the canvas as a bitmap image.
+         */
+        function drawLetter() {
+            if (!currentLetter || canvas.width === 0 || canvas.height === 0) {
+                return;
+            }
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const minSide = Math.min(width, height);
+
+            context.clearRect(0, 0, width, height);
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, width, height);
+
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillStyle = currentColor;
+
+            const maxWidth = width * 0.82;
+            const maxHeight = height * 0.78;
+            let fontSize = Math.floor(minSide * 0.74);
+
+            do {
+                context.font = `800 ${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif`;
+                const metrics = context.measureText(currentLetter);
+                const measuredHeight = Math.abs(metrics.actualBoundingBoxAscent) + Math.abs(metrics.actualBoundingBoxDescent);
+
+                if (metrics.width <= maxWidth && measuredHeight <= maxHeight) {
+                    break;
+                }
+
+                fontSize -= 4;
+            } while (fontSize > 24);
+
+            context.fillText(currentLetter, width / 2, height / 2);
+            lastRenderedValue = currentLetter;
+            status.textContent = `当前图片：${lastRenderedValue}`;
+        }
+
+        randomizeLetter();
+        resizeCanvas();
+
+        nextButton.addEventListener('click', randomizeLetter);
+        window.addEventListener('resize', resizeCanvas);
+
+        if ('ResizeObserver' in window) {
+            const observer = new ResizeObserver(resizeCanvas);
+            observer.observe(canvas);
+        }
+    </script>
+</body>
+</html>
